@@ -21,6 +21,11 @@ REMOTE_FOLDER: str = "root"
 
 
 def main() -> None:
+    """Upload a local file to the SharePoint drive.
+
+    Creates a sample file if none exists, then uploads it to the configured
+    remote folder using the simple (non-resumable) upload endpoint.
+    """
     if not LOCAL_FILE.exists():
         # Create a sample file for demonstration
         LOCAL_FILE.parent.mkdir(parents=True, exist_ok=True)

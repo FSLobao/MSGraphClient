@@ -13,6 +13,10 @@ from msgraphtest.lists import get_list_items
 
 
 def main() -> None:
+    """Retrieve and display all items from the configured SharePoint list.
+
+    Shows the ID and Title field of each list item.
+    """
     print("Fetching items from the configured SharePoint list...\n")
     items = get_list_items()
     if not items:

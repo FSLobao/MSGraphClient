@@ -25,6 +25,17 @@ load_dotenv()
 
 
 def _drive_id() -> str:
+    """Retrieve the SharePoint drive ID from environment configuration.
+
+    Reads SHAREPOINT_DRIVE_ID from environment variables (typically set
+    via .env file).
+
+    Returns:
+        The SharePoint drive ID string.
+
+    Raises:
+        EnvironmentError: If SHAREPOINT_DRIVE_ID is not set or is empty.
+    """
     drive_id = os.environ.get("SHAREPOINT_DRIVE_ID", "")
     if not drive_id:
         raise EnvironmentError("SHAREPOINT_DRIVE_ID environment variable is not set.")
@@ -67,7 +78,9 @@ def download_file(item_id: str, local_path: str | Path) -> Path:
     return dest.resolve()
 
 
-def upload_file(local_path: str | Path, remote_folder: str = "root", remote_name: str | None = None) -> dict:
+def upload_file(
+    local_path: str | Path, remote_folder: str = "root", remote_name: str | None = None
+) -> dict:
     """Upload a local file to *remote_folder* in the configured drive.
 
     Uses the simple upload endpoint (files up to 4 MB).

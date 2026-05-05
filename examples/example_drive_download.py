@@ -23,6 +23,11 @@ LOCAL_FOLDER: Path = Path(__file__).parent.parent / "downloads"
 
 
 def main() -> None:
+    """Download a file from the SharePoint drive to the local filesystem.
+
+    If ITEM_ID is not set, downloads the first file found in the drive root.
+    Saved files are placed in the downloads/ folder.
+    """
     item_id = ITEM_ID
 
     if not item_id:

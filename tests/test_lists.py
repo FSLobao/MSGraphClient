@@ -7,7 +7,8 @@ import msgraphtest.lists as lists_mod
 
 
 @pytest.fixture()
-def env(monkeypatch):
+def env(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Set up environment variables required for SharePoint list operations."""
     monkeypatch.setenv("SHAREPOINT_SITE_ID", "site-xyz")
     monkeypatch.setenv("SHAREPOINT_LIST_ID", "list-abc")
     monkeypatch.setenv("AZURE_TENANT_ID", "tenant-id")
@@ -15,7 +16,15 @@ def env(monkeypatch):
     monkeypatch.setenv("AZURE_CLIENT_SECRET", "client-secret")
 
 
-def _mock_client(return_value=None):
+def _mock_client(return_value: dict | None = None) -> MagicMock:
+    """Create a mock GraphClient instance for testing.
+
+    Args:
+        return_value: Return value for get() calls. Defaults to empty dict.
+
+    Returns:
+        A MagicMock object configured to simulate GraphClient behavior.
+    """
     client = MagicMock()
     client.get.return_value = return_value or {}
     client.post.return_value = {"id": "42", "fields": {"Title": "New Item"}}
@@ -23,8 +32,12 @@ def _mock_client(return_value=None):
     return client
 
 
-def test_get_list_items_returns_value(env):
-    items = [{"id": "1", "fields": {"Title": "Item A"}}, {"id": "2", "fields": {"Title": "Item B"}}]
+def test_get_list_items_returns_value(env: None) -> None:
+    """Test that get_list_items returns the value array from API response."""
+    items = [
+        {"id": "1", "fields": {"Title": "Item A"}},
+        {"id": "2", "fields": {"Title": "Item B"}},
+    ]
     mock_client = _mock_client(return_value={"value": items})
 
     with patch.object(lists_mod, "GraphClient", return_value=mock_client):
@@ -34,7 +47,8 @@ def test_get_list_items_returns_value(env):
     mock_client.get.assert_called_once()
 
 
-def test_get_list_items_missing_site_id(monkeypatch):
+def test_get_list_items_missing_site_id(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Test that get_list_items raises EnvironmentError when SHAREPOINT_SITE_ID is missing."""
     monkeypatch.delenv("SHAREPOINT_SITE_ID", raising=False)
 
     with patch.object(lists_mod, "GraphClient"):
@@ -42,7 +56,8 @@ def test_get_list_items_missing_site_id(monkeypatch):
             lists_mod.get_list_items()
 
 
-def test_get_list_items_missing_list_id(monkeypatch):
+def test_get_list_items_missing_list_id(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Test that get_list_items raises EnvironmentError when SHAREPOINT_LIST_ID is missing."""
     monkeypatch.setenv("SHAREPOINT_SITE_ID", "site-xyz")
     monkeypatch.delenv("SHAREPOINT_LIST_ID", raising=False)
 
@@ -51,7 +66,8 @@ def test_get_list_items_missing_list_id(monkeypatch):
             lists_mod.get_list_items()
 
 
-def test_create_list_item(env):
+def test_create_list_item(env: None) -> None:
+    """Test that create_list_item sends field data and returns the created item."""
     mock_client = _mock_client()
 
     with patch.object(lists_mod, "GraphClient", return_value=mock_client):
@@ -61,7 +77,8 @@ def test_create_list_item(env):
     assert result["id"] == "42"
 
 
-def test_update_list_item(env):
+def test_update_list_item(env: None) -> None:
+    """Test that update_list_item sends updated fields to the Graph API."""
     mock_client = _mock_client()
 
     with patch.object(lists_mod, "GraphClient", return_value=mock_client):

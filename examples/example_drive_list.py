@@ -13,6 +13,10 @@ from msgraphtest.drive import list_drive_items
 
 
 def main() -> None:
+    """List and display all items in the root of the configured SharePoint drive.
+
+    Shows the name, type (file or folder), and size of each item.
+    """
     print("Listing items in the root of the configured drive...\n")
     items = list_drive_items()
     if not items:

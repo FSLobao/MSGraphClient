@@ -22,6 +22,11 @@ ITEM_FIELDS: dict = {
 
 
 def main() -> None:
+    """Create a new item in the configured SharePoint list.
+
+    Uses the fields defined in ITEM_FIELDS and displays the created item's
+    ID and assigned field values.
+    """
     print(f"Creating new list item with fields: {ITEM_FIELDS}")
     result = create_list_item(ITEM_FIELDS)
     print(f"\nItem created successfully!")

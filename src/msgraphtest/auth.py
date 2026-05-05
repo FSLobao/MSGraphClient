@@ -27,6 +27,17 @@ GRAPH_SCOPES = ["https://graph.microsoft.com/.default"]
 
 
 def _get_config() -> tuple[str, str, str]:
+    """Retrieve and validate Azure AD authentication configuration from environment.
+
+    Reads AZURE_TENANT_ID, AZURE_CLIENT_ID, and AZURE_CLIENT_SECRET from
+    environment variables (typically set via .env file).
+
+    Returns:
+        A tuple of (tenant_id, client_id, client_secret).
+
+    Raises:
+        EnvironmentError: If any required environment variable is missing or empty.
+    """
     tenant_id = os.environ.get("AZURE_TENANT_ID", "")
     client_id = os.environ.get("AZURE_CLIENT_ID", "")
     client_secret = os.environ.get("AZURE_CLIENT_SECRET", "")

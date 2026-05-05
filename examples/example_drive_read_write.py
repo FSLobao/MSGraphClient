@@ -20,6 +20,11 @@ ITEM_ID: str = "YOUR_ITEM_ID_HERE"
 
 
 def main() -> None:
+    """Read, modify, and write back the content of a SharePoint drive file.
+
+    Reads the original content, appends a marker line, and writes the updated
+    content back to the same drive item.
+    """
     if ITEM_ID == "YOUR_ITEM_ID_HERE":
         print("Please set ITEM_ID in this script to a real drive item ID.")
         return

@@ -24,6 +24,11 @@ UPDATE_FIELDS: dict = {
 
 
 def main() -> None:
+    """Update fields on an existing SharePoint list item.
+
+    If ITEM_ID is not set, updates the first item in the list. Updates the
+    fields specified in UPDATE_FIELDS.
+    """
     item_id = ITEM_ID
 
     if not item_id:

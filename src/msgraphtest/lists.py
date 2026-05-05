@@ -22,6 +22,17 @@ load_dotenv()
 
 
 def _site_id() -> str:
+    """Retrieve the SharePoint site ID from environment configuration.
+
+    Reads SHAREPOINT_SITE_ID from environment variables (typically set
+    via .env file).
+
+    Returns:
+        The SharePoint site ID string.
+
+    Raises:
+        EnvironmentError: If SHAREPOINT_SITE_ID is not set or is empty.
+    """
     site_id = os.environ.get("SHAREPOINT_SITE_ID", "")
     if not site_id:
         raise EnvironmentError("SHAREPOINT_SITE_ID environment variable is not set.")
@@ -29,6 +40,17 @@ def _site_id() -> str:
 
 
 def _list_id() -> str:
+    """Retrieve the SharePoint list ID from environment configuration.
+
+    Reads SHAREPOINT_LIST_ID from environment variables (typically set
+    via .env file).
+
+    Returns:
+        The SharePoint list ID string.
+
+    Raises:
+        EnvironmentError: If SHAREPOINT_LIST_ID is not set or is empty.
+    """
     list_id = os.environ.get("SHAREPOINT_LIST_ID", "")
     if not list_id:
         raise EnvironmentError("SHAREPOINT_LIST_ID environment variable is not set.")
