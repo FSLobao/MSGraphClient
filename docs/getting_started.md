@@ -1,213 +1,212 @@
-# Getting Started
+# Guia de Início
 
-This guide is divided into two parts:
+Este guia é dividido em duas partes:
 
-1. [**Permissions — concepts, roles, and access scope**](#permissions--concepts-roles-and-access-scope) — what the available permissions are, who is responsible for each, and what content they grant access to.
-2. [**Step-by-step setup for `Sites.Selected`**](#step-by-step-setup-for-sitesselected) — the concrete actions each role must perform to configure and run the project.
+1. [**Permissões — conceitos, funções e escopo de acesso**](#permissões--conceitos-funções-e-escopo-de-acesso) — quais são as permissões disponíveis, quem é responsável por cada uma e que conteúdo elas concedem acesso.
+2. [**Configuração passo a passo para `Sites.Selected`**](#configuração-passo-a-passo-para-sitesselected) — as ações concretas que cada função deve executar para configurar e executar o projeto.
 
 ---
 
-## Permissions: concepts, roles, and access scope
+## Permissões: conceitos, funções e escopo de acesso
 
-### Roles involved
+### Funções envolvidas
 
-Three distinct roles participate in setting up application access to SharePoint
-via the Microsoft Graph API.  Steps in Part 2 are tagged with the badge of the
-role responsible.
+Três funções distintas participam da configuração de acesso de aplicativo ao SharePoint
+através da Microsoft Graph API. As etapas na Parte 2 são marcadas com o distintivo da
+função responsável.
 
-| Badge | Role | Description |
+| Distintivo | Função | Descrição |
 |---|---|---|
-| 🔧 **Dev team** | Application developer | Creates the app registration and writes the code. |
-| 🔑 **Entra Admin** | Azure AD / Entra ID administrator | Holds the **Application Administrator** (or Global Administrator) role. Grants admin consent for API permissions in the Azure portal. |
-| 🛡️ **SP Admin** | SharePoint tenant administrator | Holds the **SharePoint Administrator** role in the Microsoft 365 Admin Center. **This is not the same as a site collection administrator (site owner).** A site owner manages users within a site but cannot grant Graph API application access — that requires tenant-level SharePoint admin rights. |
+| 🔧 **Equipe de desenvolvimento** | Desenvolvedor de aplicativo | Cria o registro de aplicativo e escreve o código. |
+| 🔑 **Administrador Entra** | Administrador do Azure AD / Entra ID | Tem a função **Administrador de Aplicativos** (ou Administrador Global). Concede consentimento de administrador para permissões de API no portal do Azure. |
+| 🛡️ **Administrador SP** | Administrador do tenant (locatário) do SharePoint | Tem a função **Administrador do SharePoint** no Centro de Administração Microsoft 365. **Isso não é o mesmo que um administrador de coleção de sites (proprietário de site).** Um proprietário de site gerencia usuários dentro de um site, mas não pode conceder acesso à API do Graph — isso requer direitos de administrador do SharePoint no nível do tenant. |
 
-### Available Graph API permissions for SharePoint
+### Permissões disponíveis da API Microsoft Graph para SharePoint
 
-The Microsoft Graph API offers two tiers of application permissions for
-SharePoint access:
+A Microsoft Graph API oferece dois níveis de permissões de aplicativo para
+acesso ao SharePoint:
 
-| Permission | Scope | Notes |
+| Permissão | Escopo | Observações |
 |---|---|---|
-| `Sites.Read.All` | All sites in the tenant | Read-only, no restriction by site |
-| `Sites.ReadWrite.All` | All sites in the tenant | Read and write, no restriction by site |
-| `Sites.Selected` | Only explicitly enrolled sites | Least-privilege; recommended for all non-trivial deployments |
+| `Sites.Read.All` | Todos os sites no tenant | Somente leitura, sem restrição por site |
+| `Sites.ReadWrite.All` | Todos os sites no tenant | Leitura e escrita, sem restrição por site |
+| `Sites.Selected` | Apenas sites explicitamente inscritos | Privilégio mínimo; recomendado para todas as implantações não triviais |
 
-Tenant-wide permissions (`Sites.Read.All`, `Sites.ReadWrite.All`) are simple to
-configure but grant the application access to every SharePoint site in the
-organisation.  A compromised credential would expose all content tenant-wide.
-They are **not used in this project** and are only mentioned here for
-completeness.
+Permissões em todo o tenant (`Sites.Read.All`, `Sites.ReadWrite.All`) são simples de
+configurar, mas concedem ao aplicativo acesso a cada site do SharePoint na
+organização. Uma credencial comprometida exporia todo conteúdo em todo o tenant.
+Elas **não são usadas neste projeto** e são mencionadas aqui apenas para
+completude.
 
-**`Sites.Selected` is the approach used throughout this guide.**
+**`Sites.Selected` é a abordagem usada em todo este guia.**
 
-### What `Sites.Selected` grants access to
+### O que `Sites.Selected` concede acesso
 
-`Sites.Selected` by itself grants the application access to nothing.  The
-SharePoint tenant administrator must separately enrol each site the app is
-allowed to access, choosing either `read` or `write` level.
+`Sites.Selected` por si só não concede ao aplicativo acesso a nada. O
+administrador do tenant (locatário) do SharePoint deve inscrever separadamente cada site que o aplicativo tem permissão de acessar, escolhendo nível `read` (leitura) ou `write` (escrita).
 
-Once a site is enrolled, the grant covers **all content within that site
-collection**:
+Depois que um site é inscrito, a concessão cobre **todo conteúdo dentro dessa
+coleção de sites**:
 
-| Content type | Read grant | Write grant |
+| Tipo de conteúdo | Concessão de leitura | Concessão de escrita |
 |---|:---:|:---:|
-| Document libraries — enumerate folders and files | ✅ | ✅ |
-| Document libraries — download file content | ✅ | ✅ |
-| Document libraries — upload or overwrite files | ❌ | ✅ |
-| File metadata (name, size, timestamps, URL) | ✅ | ✅ |
-| Lists — read items and field values | ✅ | ✅ |
-| Lists — create or update items | ❌ | ✅ |
+| Bibliotecas de documentos — enumerar pastas e arquivos | ✅ | ✅ |
+| Bibliotecas de documentos — baixar conteúdo de arquivo | ✅ | ✅ |
+| Bibliotecas de documentos — enviar ou sobrescrever arquivos | ❌ | ✅ |
+| Metadados de arquivo (nome, tamanho, timestamps, URL) | ✅ | ✅ |
+| Listas — ler itens e valores de campo | ✅ | ✅ |
+| Listas — criar ou atualizar itens | ❌ | ✅ |
 
-> **Granularity limit:** `Sites.Selected` is the finest-grained application
-> permission available in the Microsoft Graph API.  It is not possible to
-> restrict access to a single document library or list *within* a site via
-> Graph permissions alone.  If sub-site isolation is required, enforce it in
-> the application layer by validating the drive ID or list ID before acting.
+> **Limite de granularidade:** `Sites.Selected` é a permissão de aplicativo mais refinada disponível
+> na Microsoft Graph API. Não é possível restringir o acesso a uma única
+> biblioteca de documentos ou lista *dentro* de um site via permissões do Graph isoladamente.
+> Se isolamento de subsite for necessário, aplique-o na camada de aplicativo validando
+> o ID da drive ou ID da lista antes de agir.
 
-The `read` and `write` roles in `Sites.Selected` map to the same underlying
-access level as `Sites.Read.All` and `Sites.ReadWrite.All` — the only
-difference is scope: access is restricted to explicitly enrolled sites.
+Os papéis `read` (leitura) e `write` (escrita) em `Sites.Selected` mapeiam para o mesmo
+nível de acesso subjacente que `Sites.Read.All` e `Sites.ReadWrite.All` — a única
+diferença é escopo: o acesso é restrito a sites explicitamente inscritos.
 
-Grant `read` when the application only needs to read.  Grant `write` only to
-sites that require it.  Use separate app registrations if different sites need
-different access levels.
+Conceda `read` quando o aplicativo precisar apenas ler. Conceda `write` apenas a
+sites que o requeiram. Use registros de aplicativo separados se diferentes sites precisarem
+de níveis de acesso diferentes.
 
-### Authentication flow: client credentials vs. delegated (user) authentication
+### Fluxo de autenticação: credenciais do cliente vs. autenticação delegada (usuário)
 
-This project uses the **client credentials** OAuth 2.0 flow, where the app
-authenticates as itself (the app registration) with no user context:
+Este projeto usa o fluxo OAuth 2.0 de **credenciais do cliente (client credentials)**, onde o aplicativo
+se autentica como ele mesmo (o registro de aplicativo) sem contexto de usuário:
 
-- ✅ **Unattended execution** — no user sign-in required; suitable for batch jobs, background services, or scheduled tasks.
-- ✅ **Simple setup** — a single client ID and secret.
-- ❌ **Audit trail** — SharePoint activity logs record actions by the app identity, not the user running the code.
+- ✅ **Execução sem supervisão** — não é necessário login do usuário; adequado para trabalhos em lote, serviços em background ou tarefas agendadas.
+- ✅ **Configuração simples** — um único ID do cliente e segredo.
+- ❌ **Trilha de auditoria** — logs de atividade do SharePoint registram ações pela identidade do aplicativo, não pelo usuário executando o código.
 
-**Alternative: delegated authentication** — if you need to track actions by the
-user running the app, you can switch to the **authorization code flow**, where
-a user signs in interactively:
+**Alternativa: autenticação delegada** — se você precisar rastrear ações pelo
+usuário executando o aplicativo, você pode mudar para o **fluxo de código de autorização**, onde
+um usuário faz login interativamente:
 
-- ✅ **User audit trail** — SharePoint logs identify the specific user who
-  performed each action.
-- ❌ **Requires user interaction** — the app cannot run unattended; someone must
-  sign in each time.
+- ✅ **Trilha de auditoria do usuário** — logs do SharePoint identificam o usuário específico que
+  executou cada ação.
+- ❌ **Requer interação do usuário** — o aplicativo não pode executar sem supervisão; alguém deve
+  fazer login cada vez.
 
-Both flows use the same `Sites.Selected` permission model and grant the same
-access to SharePoint content. The difference is **who the app represents**
-(itself vs. a user) and how that identity appears in audit logs.
+Ambos os fluxos usam o mesmo modelo de permissão `Sites.Selected` e concedem o mesmo
+acesso ao conteúdo do SharePoint. A diferença é **quem o aplicativo representa**
+(ele mesmo vs. um usuário) e como essa identidade aparece nos logs de auditoria.
 
-Switching to delegated auth requires:
+Mudar para autenticação delegada requer:
 
-1. Changing the token acquisition in `src/msgraphtest/auth.py` from the client
-   credentials endpoint to the authorization code flow (using a library like
-   [MSAL for Python](https://github.com/AzureAD/microsoft-authentication-library-for-python) 
-   with `acquire_token_interactive()`).
-2. Adding a **Redirect URI** in the app registration (e.g.
-   `http://localhost:8000`) to handle the OAuth callback.
-3. User(s) signing in when the app runs.
+1. Mudança da aquisição de token em `src/msgraphtest/auth.py` do endpoint de
+   credenciais do cliente para o fluxo de código de autorização (usando uma biblioteca como
+   [MSAL for Python](https://github.com/AzureAD/microsoft-authentication-library-for-python)
+   com `acquire_token_interactive()`).
+2. Adição de uma **URI de Redirecionamento** no registro de aplicativo (ex:
+   `http://localhost:8000`) para tratar o callback OAuth.
+3. Usuários fazendo login quando o aplicativo executa.
 
-For most scenarios, **client credentials (current approach) is simpler**. Use
-delegated auth only if your governance or compliance requirements mandate an
-audit trail linking each SharePoint action to a named user.
+Para a maioria dos cenários, **credenciais do cliente (abordagem atual) é mais simples**. Use
+autenticação delegada apenas se seus requisitos de governança ou conformidade mandatarem uma
+trilha de auditoria vinculando cada ação do SharePoint a um usuário nomeado.
 
-## Step-by-step setup for `Sites.Selected`
+## Configuração passo a passo para `Sites.Selected`
 
-### Who does what — overview
+### Quem faz o quê — visão geral
 
-| Step | Action | 🔧 Dev | 🔑 Entra Admin | 🛡️ SP Admin |
+| Etapa | Ação | 🔧 Desenvolvimento | 🔑 Administrador Entra | 🛡️ Administrador SP |
 |---|---|:---:|:---:|:---:|
-| 1 | Create app registration and client secret | ✅ | | |
-| 2 | Add `Sites.Selected` permission | ✅ | | |
-| 2 | Grant admin consent | | ✅ | |
-| 3 | Discover the SharePoint site ID | ✅ | | |
-| 4 | Enrol the site for the app | | | ✅ |
-| 5 | Discover drive ID and list ID | ✅ | | |
-| 6 | Configure `.env` and run | ✅ | | |
+| 1 | Criar registro de aplicativo e segredo do cliente | ✅ | | |
+| 2 | Adicionar permissão `Sites.Selected` | ✅ | | |
+| 2 | Conceder consentimento de administrador | | ✅ | |
+| 3 | Descobrir o ID do site do SharePoint | ✅ | | |
+| 4 | Inscrever o site para o aplicativo | | | ✅ |
+| 5 | Descobrir ID da drive e ID da lista | ✅ | | |
+| 6 | Configurar `.env` e executar | ✅ | | |
 
 ---
 
-### Step 1 — Create the app registration and client secret
+### Etapa 1 — Criar o registro de aplicativo e segredo do cliente
 
-> 🔧 **Dev team**
+> 🔧 **Equipe de desenvolvimento**
 
-1. Open the [Azure portal](https://portal.azure.com) → **Microsoft Entra ID** → **App registrations** → **New registration**.
-2. **Name**: choose a descriptive name, e.g. `MSGraphTest-SharePoint`.
-3. **Supported account types**: select **Accounts in this organizational directory only**.
-4. Leave **Redirect URI** blank (client credentials flow — no user sign-in).
-5. Click **Register** and note:
-   - **Application (client) ID** → `AZURE_CLIENT_ID`
-   - **Directory (tenant) ID** → `AZURE_TENANT_ID`
-6. Go to **Certificates & secrets** → **Client secrets** → **New client secret**.
-7. Set a description and an expiry aligned with your rotation policy (max 24 months).
-8. Click **Add** and **immediately copy** the secret value → `AZURE_CLIENT_SECRET`.
+1. Abra o [portal do Azure](https://portal.azure.com) → **Microsoft Entra ID** → **Registros de app** → **Novo registro**.
+2. **Nome**: escolha um nome descritivo, ex: `MSGraphTest-SharePoint`.
+3. **Tipos de conta suportados**: selecione **Contas neste diretório organizacional apenas**.
+4. Deixe **URI de Redirecionamento** em branco (fluxo de credenciais do cliente — sem login do usuário).
+5. Clique em **Registrar** e anote:
+   - **ID do Aplicativo (cliente)** → `AZURE_CLIENT_ID`
+   - **ID do Diretório (tenant)** → `AZURE_TENANT_ID`
+6. Vá para **Certificados e segredos** → **Segredos do cliente** → **Novo segredo do cliente**.
+7. Defina uma descrição e uma expiração alinhada com sua política de rotação (máximo 24 meses).
+8. Clique em **Adicionar** e **copie imediatamente** o valor do segredo → `AZURE_CLIENT_SECRET`.
 
-> ⚠️ The secret value is shown only once. Store it securely (e.g. Azure Key Vault). If you navigate away without copying it, delete and recreate it.
-
----
-
-### Step 2 — Add `Sites.Selected` and grant admin consent
-
-> 🔧 **Dev team** adds the permission.  🔑 **Entra Admin** grants consent.
-
-1. In the app registration go to **API permissions** → **Add a permission** → **Microsoft Graph** → **Application permissions**.
-2. Search for and add **`Sites.Selected`** only.
-3. Click **Grant admin consent for \<tenant\>** (requires Entra Admin) and confirm.
-
-> `Sites.Selected` grants no site access yet — that happens in Step 4.
+> ⚠️ O valor do segredo é mostrado apenas uma vez. Armazene-o com segurança (ex: Azure Key Vault). Se você navegar para longe sem copiá-lo, delete e recrie-o.
 
 ---
 
-### Step 3 — Discover the SharePoint site ID
+### Etapa 2 — Adicionar `Sites.Selected` e conceder consentimento de administrador
 
-> 🔧 **Dev team**
+> 🔧 **Equipe de desenvolvimento** adiciona a permissão. 🔑 **Administrador Entra** concede consentimento.
 
-This step uses a **short-lived delegated token** (your personal user account)
-solely to look up the site ID string.  This token is independent of the app's
-credentials: it grants nothing to the app registration, leaves no lasting
-state, and is not used anywhere after this step.  The application itself always
-authenticates with a separate client-credential token (app identity) acquired
-in Step 5.
+1. No registro de aplicativo vá para **Permissões de API** → **Adicionar uma permissão** → **Microsoft Graph** → **Permissões de aplicativo**.
+2. Pesquise e adicione **`Sites.Selected`** apenas.
+3. Clique em **Conceder consentimento de administrador para \<tenant\>** (requer Administrador Entra) e confirme.
 
-Obtain the delegated token using the Azure CLI:
+> `Sites.Selected` não concede acesso a site ainda — isso acontece na Etapa 4.
+
+---
+
+### Etapa 3 — Descobrir o ID do site do SharePoint
+
+> 🔧 **Equipe de desenvolvimento**
+
+Esta etapa usa um **token delegado de curta duração** (sua conta de usuário pessoal)
+apenas para procurar a string do ID do site. Este token é independente das
+credenciais do aplicativo: não concede nada ao registro de aplicativo, não deixa
+estado duradouro e não é usado em lugar nenhum depois desta etapa. O próprio aplicativo
+sempre autentica com um token de credenciais do cliente separado (identidade do app) adquirido
+na Etapa 5.
+
+Obtenha o token delegado usando a Azure CLI:
 
 ```bash
 az login
 TOKEN=$(az account get-access-token --resource https://graph.microsoft.com --query accessToken -o tsv)
 ```
 
-Query the site:
+Consulte o site:
 
 ```bash
-# Replace <hostname> and <site-path> with your values
-# Example: contoso.sharepoint.com and sites/ProjectAlpha
+# Substitua <hostname> e <site-path> com seus valores
+# Exemplo: contoso.sharepoint.com e sites/ProjectAlpha
 curl -s -H "Authorization: Bearer $TOKEN" \
   "https://graph.microsoft.com/v1.0/sites/<hostname>:/sites/<site-path>" \
   | python -m json.tool
 ```
 
-Copy the `id` field from the response → `SHAREPOINT_SITE_ID`.  
-Format: `contoso.sharepoint.com,xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx,yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy`
+Copie o campo `id` da resposta → `SHAREPOINT_SITE_ID`.  
+Formato: `contoso.sharepoint.com,xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx,yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy`
 
-Share this value with the SP Admin before proceeding to Step 4.
+Compartilhe este valor com o Administrador SP antes de prosseguir para a Etapa 4.
 
 ---
 
-### Step 4 — Enrol the site for the app
+### Etapa 4 — Inscrever o site para o aplicativo
 
-> 🛡️ **SP Admin** (SharePoint tenant administrator)
+> 🛡️ **Administrador SP** (administrador do tenant do SharePoint)
 
-> ⚠️ The account performing this step must hold the **SharePoint Administrator**
-> or **Global Administrator** role in Microsoft 365.  A site collection
-> administrator / site owner cannot call `POST /sites/{site-id}/permissions`.
+> ⚠️ A conta executando esta etapa deve ter a função **Administrador do SharePoint**
+> ou **Administrador Global** no Microsoft 365. Um administrador de coleção de sites /
+> proprietário de site não pode chamar `POST /sites/{site-id}/permissions`.
 
-Obtain an admin token:
+Obtenha um token de administrador:
 
 ```bash
-az login  # sign in with the SP Admin account
+az login  # faça login com a conta do Administrador SP
 TOKEN=$(az account get-access-token --resource https://graph.microsoft.com --query accessToken -o tsv)
-SITE_ID="<SHAREPOINT_SITE_ID from Step 3>"
-APP_ID="<AZURE_CLIENT_ID from Step 1>"
+SITE_ID="<SHAREPOINT_SITE_ID da Etapa 3>"
+APP_ID="<AZURE_CLIENT_ID da Etapa 1>"
 ```
 
-**Grant read-only access:**
+**Conceder acesso somente leitura:**
 
 ```bash
 curl -s -X POST \
@@ -225,7 +224,7 @@ curl -s -X POST \
   }'
 ```
 
-**Grant read + write access** (replace `"read"` with `"write"` — write implicitly includes read):
+**Conceder acesso leitura + escrita** (substitua `"read"` com `"write"` — escrita implicitamente inclui leitura):
 
 ```bash
 curl -s -X POST \
@@ -243,7 +242,7 @@ curl -s -X POST \
   }'
 ```
 
-**Verify the grant:**
+**Verificar a concessão:**
 
 ```bash
 curl -s -H "Authorization: Bearer $TOKEN" \
@@ -251,7 +250,7 @@ curl -s -H "Authorization: Bearer $TOKEN" \
   | python -m json.tool
 ```
 
-**Revoke a grant** (if needed — use the `id` returned by the verify call above):
+**Revogar uma concessão** (se necessário — use o `id` retornado pela chamada de verificação acima):
 
 ```bash
 curl -s -X DELETE \
@@ -261,9 +260,9 @@ curl -s -X DELETE \
 
 ---
 
-### Step 5 — Discover the drive ID and list ID
+### Etapa 5 — Descobrir o ID da drive e ID da lista
 
-> 🔧 **Dev team** — uses the app's own client-credential token.
+> 🔧 **Equipe de desenvolvimento** — usa o token de credenciais do cliente do próprio aplicativo.
 
 ```bash
 TOKEN=$(curl -s -X POST \
@@ -275,7 +274,7 @@ TOKEN=$(curl -s -X POST \
   | python -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
 ```
 
-**Find the drive ID:**
+**Encontrar o ID da drive:**
 
 ```bash
 curl -s -H "Authorization: Bearer $TOKEN" \
@@ -283,9 +282,9 @@ curl -s -H "Authorization: Bearer $TOKEN" \
   | python -m json.tool
 ```
 
-Pick the entry whose `name` matches your document library and copy its `id` → `SHAREPOINT_DRIVE_ID`.
+Escolha a entrada cujo `name` corresponde à sua biblioteca de documentos e copie seu `id` → `SHAREPOINT_DRIVE_ID`.
 
-**Find the list ID:**
+**Encontrar o ID da lista:**
 
 ```bash
 curl -s -H "Authorization: Bearer $TOKEN" \
@@ -293,20 +292,20 @@ curl -s -H "Authorization: Bearer $TOKEN" \
   | python -m json.tool
 ```
 
-Pick the list you want to work with and copy its `id` → `SHAREPOINT_LIST_ID`.
+Escolha a lista com a qual você deseja trabalhar e copie seu `id` → `SHAREPOINT_LIST_ID`.
 
 ---
 
-### Step 6 — Configure `.env` and run
+### Etapa 6 — Configurar `.env` e executar
 
-> 🔧 **Dev team**
+> 🔧 **Equipe de desenvolvimento**
 
 ```bash
 uv sync
 cp .env.example .env
 ```
 
-Edit `.env` with all values collected above:
+Edite `.env` com todos os valores coletados acima:
 
 ```ini
 AZURE_TENANT_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
@@ -317,7 +316,7 @@ SHAREPOINT_DRIVE_ID=b!<drive-id>
 SHAREPOINT_LIST_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 ```
 
-Verify connectivity:
+Verificar conectividade:
 
 ```bash
 uv run examples/example_drive_list.py

@@ -1,59 +1,59 @@
 # MSGraphTest — SharePoint via Microsoft Graph API
 
-A Python test project demonstrating how to access SharePoint through the
-**Microsoft Graph API** using MSAL for authentication.  Operations covered
-include document library (drive) management and SharePoint list manipulation.
+Um projeto de teste em Python demonstrando como acessar o SharePoint através da
+**Microsoft Graph API** usando MSAL para autenticação. As operações abordadas
+incluem gerenciamento de biblioteca de documentos (drive) e manipulação de listas do SharePoint.
 
-Licensed under the [GNU General Public License v3.0](LICENSE).
+Licenciado sob a [GNU General Public License v3.0](LICENSE).
 
 ---
 
-## Project structure
+## Estrutura do projeto
 
 ```
 MSGraphTest/
 ├── src/
 │   └── msgraphtest/
-│       ├── __init__.py        # package entry-point
-│       ├── auth.py            # MSAL client-credentials token helper
-│       ├── graph_client.py    # thin HTTP wrapper for Graph REST calls
-│       ├── drive.py           # document library operations
-│       └── lists.py           # SharePoint list operations
+│       ├── __init__.py        # ponto de entrada do pacote
+│       ├── auth.py            # auxiliar de token client-credentials (credenciais do cliente) com MSAL
+│       ├── graph_client.py    # wrapper (invólucro) HTTP fino para chamadas REST do Graph
+│       ├── drive.py           # operações de biblioteca de documentos
+│       └── lists.py           # operações de lista do SharePoint
 ├── tests/
 │   ├── test_auth.py
 │   ├── test_drive.py
 │   └── test_lists.py
 ├── examples/
-│   ├── example_drive_list.py       # list drive root contents
-│   ├── example_drive_download.py   # download a file to local folder
-│   ├── example_drive_upload.py     # upload a local file
-│   ├── example_drive_read_write.py # read & update file text content
-│   ├── example_list_get.py         # retrieve all list items
-│   ├── example_list_create.py      # create a list item
-│   └── example_list_update.py      # update a list item
+│   ├── example_drive_list.py       # listar conteúdo raiz da drive
+│   ├── example_drive_download.py   # baixar arquivo para pasta local
+│   ├── example_drive_upload.py     # enviar arquivo local
+│   ├── example_drive_read_write.py # ler e atualizar conteúdo de texto do arquivo
+│   ├── example_list_get.py         # recuperar todos os itens de lista
+│   ├── example_list_create.py      # criar item de lista
+│   └── example_list_update.py      # atualizar item de lista
 ├── docs/
 │   └── getting_started.md
-├── downloads/                 # (git-ignored) local download target
-├── .env.example               # copy to .env and fill in credentials
+├── downloads/                 # (ignorado por git) destino de download local
+├── .env.example               # copie para .env e preencha as credenciais
 ├── pyproject.toml
 └── LICENSE
 ```
 
 ---
 
-## Prerequisites
+## Pré-requisitos
 
-| Requirement | Notes |
+| Requisito | Observações |
 |---|---|
-| Python ≥ 3.11 | Tested with 3.11+ |
-| [UV](https://docs.astral.sh/uv/) | Package & virtual-env manager |
-| Azure AD App Registration | With `Sites.Read.All` / `Sites.ReadWrite.All` MS Graph permissions |
+| Python ≥ 3.11 | Testado com 3.11+ |
+| [UV](https://docs.astral.sh/uv/) | Gerenciador de pacotes e ambiente virtual |
+| Registro de Aplicativo do Azure AD (inscrição de app) | Com permissões MS Graph `Sites.Read.All` / `Sites.ReadWrite.All` |
 
 ---
 
-## Quick start
+## Início rápido
 
-### 1. Clone and install dependencies
+### 1. Clonar e instalar dependências
 
 ```bash
 git clone <repo-url>
@@ -61,27 +61,27 @@ cd MSGraphTest
 uv sync
 ```
 
-### 2. Configure credentials
+### 2. Configurar credenciais
 
 ```bash
 cp .env.example .env
-# edit .env with your Azure AD and SharePoint details
+# edite .env com seus detalhes do Azure AD e SharePoint
 ```
 
-Required variables in `.env`:
+Variáveis obrigatórias em `.env`:
 
-| Variable | Description |
+| Variável | Descrição |
 |---|---|
-| `AZURE_TENANT_ID` | Azure AD tenant ID |
-| `AZURE_CLIENT_ID` | App registration client ID |
-| `AZURE_CLIENT_SECRET` | App registration client secret |
-| `SHAREPOINT_SITE_ID` | Graph site ID (e.g. `contoso.sharepoint.com,guid,guid`) |
-| `SHAREPOINT_DRIVE_ID` | Drive ID of the document library |
-| `SHAREPOINT_LIST_ID` | List ID for list operations |
+| `AZURE_TENANT_ID` | ID do tenant (locatário) do Azure AD |
+| `AZURE_CLIENT_ID` | ID do cliente do registro de aplicativo |
+| `AZURE_CLIENT_SECRET` | Segredo do cliente do registro de aplicativo |
+| `SHAREPOINT_SITE_ID` | ID do site do Graph (ex: `contoso.sharepoint.com,guid,guid`) |
+| `SHAREPOINT_DRIVE_ID` | ID da drive (unidade) da biblioteca de documentos |
+| `SHAREPOINT_LIST_ID` | ID da lista para operações de lista |
 
-> **Finding IDs** — see [docs/getting_started.md](docs/getting_started.md).
+> **Encontrando IDs** — veja [docs/getting_started.md](docs/getting_started.md).
 
-### 3. Run an example
+### 3. Executar um exemplo
 
 ```bash
 uv run examples/example_drive_list.py
@@ -90,14 +90,14 @@ uv run examples/example_list_get.py
 
 ---
 
-## Running tests
+## Executando testes
 
 ```bash
 uv run pytest
 ```
 
-Coverage report is printed automatically.  Tests use mocking and do **not**
-require live credentials.
+Relatório de cobertura é impresso automaticamente. Os testes usam mocking e **não**
+requerem credenciais reais.
 
 ---
 
