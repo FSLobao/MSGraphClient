@@ -2,6 +2,15 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Site: Get Contents",
+            "type": "python",
+            "request": "launch",
+            "module": "examples.example_site_contents",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "cwd": "${workspaceFolder}"
+        },
+        {
             "name": "Drive: List Items",
             "type": "python",
             "request": "launch",
