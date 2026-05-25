@@ -86,3 +86,49 @@ def test_update_list_item(env: None) -> None:
 
     mock_client.patch.assert_called_once()
     assert result["Title"] == "Updated Item"
+
+
+def test_get_list_columns_returns_value(env: None) -> None:
+    """Test that get_list_columns returns the value array from the columns endpoint."""
+    columns = [
+        {"name": "Title", "displayName": "Title"},
+        {"name": "field_1", "displayName": "Customer Name"},
+    ]
+    mock_client = _mock_client(return_value={"value": columns})
+
+    with patch.object(lists_mod, "GraphClient", return_value=mock_client):
+        result = lists_mod.get_list_columns()
+
+    assert result == columns
+    mock_client.get.assert_called_once()
+
+
+def test_get_list_views_returns_value(env: None) -> None:
+    """Test that get_list_views returns the value array from the views endpoint."""
+    views = [
+        {"id": "view-1", "name": "All Items"},
+        {"id": "view-2", "name": "Active Only"},
+    ]
+    mock_client = _mock_client(return_value={"value": views})
+
+    with patch.object(lists_mod, "GraphClient", return_value=mock_client):
+        result = lists_mod.get_list_views()
+
+    assert result == views
+    mock_client.get.assert_called_once()
+
+
+def test_get_list_view_columns_returns_value(env: None) -> None:
+    """Test that get_list_view_columns returns the value array for a specific view."""
+    columns = [
+        {"name": "Title", "displayName": "Title"},
+        {"name": "field_2", "displayName": "Status"},
+    ]
+    mock_client = _mock_client(return_value={"value": columns})
+
+    with patch.object(lists_mod, "GraphClient", return_value=mock_client):
+        result = lists_mod.get_list_view_columns("view-1")
+
+    assert result == columns
+    call_path = mock_client.get.call_args[0][0]
+    assert "views/view-1/columns" in call_path
