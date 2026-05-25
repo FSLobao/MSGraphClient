@@ -2,9 +2,14 @@
 
 from unittest.mock import MagicMock
 
+import pytest
 import requests
 
-from msgraphtest.graph_client import format_http_error
+from msgraphtest.graph_client import (
+    GraphAuthorizationError,
+    _raise_for_status,
+    format_http_error,
+)
 
 
 def _http_error_with_response(
@@ -68,3 +73,58 @@ def test_format_http_error_without_response() -> None:
     message = format_http_error(error)
 
     assert message == "HTTP error: boom"
+
+
+def test_raise_for_status_raises_graph_authorization_error_for_403() -> None:
+    """Test 403 responses are raised as GraphAuthorizationError."""
+    error = _http_error_with_response(
+        status=403,
+        reason="Forbidden",
+        method="GET",
+        json_payload={
+            "error": {
+                "code": "accessDenied",
+                "message": "Insufficient privileges to complete the operation.",
+            }
+        },
+    )
+    response = error.response
+    assert response is not None
+    response.raise_for_status.side_effect = error
+
+    with pytest.raises(GraphAuthorizationError) as excinfo:
+        _raise_for_status(response)
+
+    assert "Authorization error:" in str(excinfo.value)
+
+
+def test_raise_for_status_raises_graph_authorization_error_for_401() -> None:
+    """Test 401 responses are raised as GraphAuthorizationError."""
+    error = _http_error_with_response(
+        status=401,
+        reason="Unauthorized",
+        method="GET",
+        text_payload="Unauthorized",
+    )
+    response = error.response
+    assert response is not None
+    response.raise_for_status.side_effect = error
+
+    with pytest.raises(GraphAuthorizationError):
+        _raise_for_status(response)
+
+
+def test_raise_for_status_raises_http_error_for_non_auth_failures() -> None:
+    """Test non-auth failures still raise requests.HTTPError."""
+    error = _http_error_with_response(
+        status=400,
+        reason="Bad Request",
+        method="GET",
+        text_payload="Bad request",
+    )
+    response = error.response
+    assert response is not None
+    response.raise_for_status.side_effect = error
+
+    with pytest.raises(requests.HTTPError):
+        _raise_for_status(response)

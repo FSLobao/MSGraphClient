@@ -16,6 +16,10 @@ from msgraphtest.auth import get_access_token
 GRAPH_BASE_URL = "https://graph.microsoft.com/v1.0"
 
 
+class GraphAuthorizationError(requests.HTTPError):
+    """HTTP error raised when the caller lacks authorization to the target resource."""
+
+
 def format_http_error(error: requests.HTTPError) -> str:
     """Return a clean, user-facing message for an HTTP error.
 
@@ -63,6 +67,33 @@ def _extract_graph_error_detail(response: requests.Response) -> str | None:
     return None
 
 
+def _raise_for_status(response: requests.Response) -> None:
+    """Raise enriched HTTP exceptions, specializing authorization failures.
+
+    Raises:
+        GraphAuthorizationError: For 401/403 responses.
+        requests.HTTPError: For all other non-success HTTP responses.
+    """
+    try:
+        response.raise_for_status()
+        return
+    except requests.HTTPError as error:
+        message = format_http_error(error)
+        status = response.status_code
+        if status in (401, 403):
+            raise GraphAuthorizationError(
+                f"Authorization error: {message}",
+                response=response,
+                request=response.request,
+            ) from error
+
+        raise requests.HTTPError(
+            message,
+            response=response,
+            request=response.request,
+        ) from error
+
+
 class GraphClient:
     """Minimal Microsoft Graph API client (client credentials)."""
 
@@ -100,7 +131,7 @@ class GraphClient:
         """
         url = f"{GRAPH_BASE_URL}{path}"
         response = self._session.get(url, **kwargs)
-        response.raise_for_status()
+        _raise_for_status(response)
         return response.json()
 
     def post(self, path: str, json: dict, **kwargs: Any) -> dict:
@@ -120,7 +151,7 @@ class GraphClient:
         """
         url = f"{GRAPH_BASE_URL}{path}"
         response = self._session.post(url, json=json, **kwargs)
-        response.raise_for_status()
+        _raise_for_status(response)
         return response.json()
 
     def patch(self, path: str, json: dict, **kwargs: Any) -> dict:
@@ -140,7 +171,7 @@ class GraphClient:
         """
         url = f"{GRAPH_BASE_URL}{path}"
         response = self._session.patch(url, json=json, **kwargs)
-        response.raise_for_status()
+        _raise_for_status(response)
         return response.json()
 
     def put_bytes(
@@ -169,7 +200,7 @@ class GraphClient:
         url = f"{GRAPH_BASE_URL}{path}"
         headers = {"Content-Type": content_type}
         response = self._session.put(url, data=data, headers=headers, **kwargs)
-        response.raise_for_status()
+        _raise_for_status(response)
         return response.json()
 
     def get_raw(self, path: str, **kwargs: Any) -> bytes:
@@ -188,5 +219,5 @@ class GraphClient:
         """
         url = f"{GRAPH_BASE_URL}{path}"
         response = self._session.get(url, **kwargs)
-        response.raise_for_status()
+        _raise_for_status(response)
         return response.content
