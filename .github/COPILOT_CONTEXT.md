@@ -1,173 +1,126 @@
 # Copilot Context — MSGraphTest
 
-Este arquivo resume o contexto atual do repositório para manutenção de código e documentação.
-Atualize-o sempre que o contrato funcional do projeto mudar.
+Este arquivo resume o estado atual do repositório para manutenção de código e documentação.
+Atualize-o sempre que a superfície pública ou a estrutura do projeto mudar.
 
 ---
 
 ## Visão Geral
 
-**Objetivo**: biblioteca Python e documentação de referência para acessar SharePoint via Microsoft Graph com privilégio mínimo, sempre restringindo o acesso a sites explicitamente inscritos.
+**Objetivo**: biblioteca Python e exemplos para acessar SharePoint via Microsoft Graph com privilégio mínimo, usando uma arquitetura classe-first.
 
 **Modelos suportados**:
-- `app_only` (client credentials)
-- `delegated` (authorization code / usuário autenticado)
+- `GraphClient` como ponto de entrada principal para Microsoft Graph
+- `GraphAuthenticator` para autenticação e descoberta do site
+- `GraphDrive` para operações de biblioteca de documentos
+- `GraphList` para operações de listas do SharePoint
 
-**Princípio central**:
-- O projeto usa `Sites.Selected` em ambos os modelos.
-- Não usa `Sites.Read.All` nem `Sites.ReadWrite.All` para acesso de dados.
-- Não são incluídas autorizações de dados no nível do tenant.
-- Para qualquer app, o acesso só existe depois de uma concessão explícita em um `site_id` concreto.
+**Princípios centrais**:
+- `GraphClient` possui `GraphAuthenticator`.
+- `GraphList` deriva `site_id` do `client.authenticator` quando possível.
+- Não existem mais wrappers de compatibilidade em nível de módulo para drive/list/site.
+- As consultas de listas usam seleção no momento da requisição, evitando filtragem tardia desnecessária.
+- `get_list_views()` retorna `[]` quando a lista não expõe views.
 
-No fluxo `delegated`, o acesso efetivo em runtime é a interseção entre:
-1. a concessão do aplicativo no site (`read` ou `write`)
-2. as permissões que o usuário autenticado já tem nesse mesmo site
+No fluxo `delegated`, o acesso efetivo em runtime continua sendo a interseção entre a concessão do aplicativo no site e as permissões do usuário autenticado nesse site.
 
 ---
 
 ## Stack
 
-- Python 3.11+
-- MSAL
-- Microsoft Graph API
-- Azure CLI
-- Microsoft Graph PowerShell SDK
-- pytest + pytest-mock
+- Python 3.14.0
+- `uv`
+- `pytest`
+- `requests`
+- `msal`
+- `pandas`
+- `python-dotenv`
+- `arcgis` para os exemplos e notebooks de ArcGIS
 
 ---
 
-## Estrutura
+## Estrutura Atual
 
 ```text
 MSGraphTest/
+├── docs/
+├── downloads/
+├── examples/
+│   ├── example_drive_download.py
+│   ├── example_drive_list.py
+│   ├── example_drive_read_write.py
+│   ├── example_drive_upload.py
+│   ├── example_list_create.py
+│   ├── example_list_get.py
+│   ├── example_list_update.py
+│   ├── example_site_contents.py
+│   └── example_arcgis_dem_tiles.py
+├── notebooks/
+│   └── graph_auth_site_attributes.ipynb
 ├── src/
+│   ├── arcgisTest/
 │   ├── bulkCreate/
-│   │   ├── bulk_create_apps.py
-│   │   └── Bulk-CreateApps.ps1
 │   └── msgraphtest/
 │       ├── __init__.py
 │       ├── auth.py
-│       ├── graph_client.py
 │       ├── drive.py
 │       └── lists.py
-├── docs/
-│   ├── getting_started.md
-│   ├── setup_cli.md
-│   ├── setup_portal.md
-│   ├── setup_delegated_auth.md
-│   └── bulk_create_apps.md
-├── examples/
-│   └── bulk_create_example.json
 ├── tests/
-└── pyproject.toml
+├── pyproject.toml
+└── README.md
 ```
 
 ---
 
-## Permissões e Constantes
+## Graph Surface
 
-**Microsoft Graph App ID**:
+### `src/msgraphtest/auth.py`
+- `GraphClient` encapsula a sessão HTTP autenticada e a formatação de erros Graph.
+- `GraphAuthenticator` valida config, obtém token e expõe metadados do site.
+- A descoberta do site agora vive em `GraphAuthenticator`.
 
-```text
-00000003-0000-0000-c000-000000000000
-```
+### `src/msgraphtest/drive.py`
+- `GraphDrive.list_drive_items(folder_path)`
+- `GraphDrive.download_file(item_id, local_path)`
+- `GraphDrive.upload_file(local_path, remote_folder, remote_name=None)`
+- `GraphDrive.read_file_content(item_id)`
+- `GraphDrive.write_file_content(item_id, content)`
 
-**Permissão usada para SharePoint**:
-- Nome: `Sites.Selected`
-- Tipo para `app_only`: `Role`
-- Tipo para `delegated`: `Scope`
-
-**Importante**:
-- Não hardcode IDs de `Sites.Selected` em documentação nova se puder resolvê-los dinamicamente.
-- No código, prefira descobrir o ID correto a partir do service principal do Microsoft Graph.
-
----
-
-## Bulk Create
-
-### Arquivos principais
-
-- `src/bulkCreate/bulk_create_apps.py`
-- `src/bulkCreate/Bulk-CreateApps.ps1`
-
-### Responsabilidade
-
-Criar apps em lote a partir de JSON, incluindo:
-- criação do app registration
-- criação de segredo
-- adição de `Sites.Selected`
-- consentimento administrativo
-- inscrição do `site_id` informado com `read` ou `write`
-
-### Contrato atual do JSON
-
-Campos relevantes:
-- `name` ou `display_name`
-- `auth_type`: `app_only` ou `delegated`
-- `site_id`: obrigatório para todos os apps
-- `access_type`: obrigatório para todos os apps; aceita `leitura`, `escrita`, `read`, `write`
-- `redirect_uri`: obrigatório quando `auth_type = delegated`
-- `secret_expiration_date`: obrigatório no formato `dd/mm/aaaa`, limitado a 730 dias
-
-Exemplo mínimo:
-
-```json
-[
-  {
-    "display_name": "Portal Delegated Access",
-    "auth_type": "delegated",
-    "site_id": "contoso.sharepoint.com,site-guid,web-guid",
-    "access_type": "leitura",
-    "redirect_uri": "http://localhost:8000",
-    "secret_expiration_date": "15/06/2028"
-  }
-]
-```
-
-### Comportamento esperado
-
-- `app_only`: adiciona `Sites.Selected` como `Role`
-- `delegated`: adiciona `Sites.Selected` como `Scope`
-- ambos os fluxos concedem consentimento administrativo e inscrevem o site
-- ambos os fluxos devem falhar se `site_id` ou `access_type` não forem fornecidos
+### `src/msgraphtest/lists.py`
+- `GraphList.get_list_views()` com fallback seguro para listas sem views
+- `GraphList.get_list_view_columns(view_id)`
+- `GraphList.get_list_columns(names=None)` com filtro de metadados via Graph
+- `GraphList.get_list_items(select=None, include_title=False, fields_only=False, include_item_id=False)`
+- `GraphList.create_list_item(fields)`
+- `GraphList.update_list_item(item_id, fields)`
 
 ---
 
-## Documentação Fonte de Verdade
+## ArcGIS
 
-- `docs/getting_started.md`: visão geral, papéis administrativos, modelo de privilégio mínimo
-- `docs/setup_cli.md`: configuração por linha de comando
-- `docs/setup_portal.md`: configuração manual pelo portal e Graph Explorer
-- `docs/setup_delegated_auth.md`: fluxo delegado com `Sites.Selected` e grant por site
-- `docs/bulk_create_apps.md`: automação em lote e schema JSON
-
-Ao alterar o comportamento do código, mantenha esses documentos alinhados.
+- `src/arcgisTest/` contém helpers reutilizáveis para autenticação e acesso a ImageServer/WMS.
+- `examples/example_arcgis_dem_tiles.py` mostra o uso desses helpers.
+- `notebooks/arcgis_auth_testing.ipynb` e `notebooks/arcgis_http_testing.ipynb` validam os fluxos de forma interativa.
 
 ---
 
-## Papéis Administrativos
+## Documentação e Exemplos
 
-- **Desenvolvimento**: cria o app registration, configura código, descobre IDs de site/drive/list
-- **Administrador Entra**: concede consentimento administrativo de `Sites.Selected`
-- **Administrador SharePoint**: inscreve sites via `POST /sites/{site-id}/permissions`
-
-Observações:
-- `Application Administrator` e `Cloud Application Administrator` não são suficientes para este consentimento do Microsoft Graph.
-- A inscrição do site exige papel de administrador do SharePoint no tenant, não apenas proprietário do site.
+- Os exemplos de Graph foram migrados para uso direto das classes.
+- O notebook `notebooks/graph_auth_site_attributes.ipynb` é a validação end-to-end principal do fluxo SharePoint.
+- O README foi alinhado com a superfície atual e não deve mencionar wrappers de compatibilidade removidos.
 
 ---
 
 ## Testes e Validação
 
-Comandos preferenciais:
+Comando preferencial:
 
 ```bash
-uv run pytest
+uv run pytest tests/
 ```
 
-Para mudanças locais em scripts:
-- Python: checagem estática e `py_compile` quando houver interpretador disponível
-- PowerShell: parser/diagnóstico do editor e execução controlada quando o ambiente permitir
+Estado validado no último sweep: 44 testes passaram.
 
 ---
 
@@ -175,17 +128,17 @@ Para mudanças locais em scripts:
 
 Nunca versionar:
 - `.env`
-- arquivos de saída contendo `client_secret`
-- caches de token como `.msal_token_cache.json`
+- caches de token
+- arquivos de saída contendo segredos
 
 Preferências do projeto:
 - privilégios mínimos
 - grants por site
-- segredos com expiração explícita e curta
+- segredos com expiração explícita
 
 ---
 
 ## Última Atualização
 
-- Data: 11/05/2026
-- Alteração principal: `Sites.Selected` passou a ser tratado como obrigatório para `app_only` e `delegated`, sempre com restrição a um `site_id` concreto e sem autorizações de dados no nível do tenant
+- Data: 26/05/2026
+- Alteração principal: remoção dos wrappers legados, consolidação da API em classes, atualização dos exemplos/notebooks e inclusão dos helpers ArcGIS.

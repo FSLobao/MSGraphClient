@@ -1,21 +1,24 @@
 """
 example_drive_read_write.py — Read and then update the text content of a drive item.
 
-Set ITEM_ID to a text-based file in your drive.
+Set DRIVE_ITEM_ID in .env to a text-based file in your drive.
 
 Usage:
     uv run examples/example_drive_read_write.py
 """
 
+import os
+
 from dotenv import load_dotenv
 
 load_dotenv()
 
-from msgraphtest.drive import read_file_content, write_file_content
+from msgraphtest.auth import GraphClient
+from msgraphtest.drive import GraphDrive
 
 # ── Configuration ───────────────────────────────────────────────────────────
-# Replace with a real drive item ID for a text file
-ITEM_ID: str = "YOUR_ITEM_ID_HERE"
+# Set DRIVE_ITEM_ID in .env with a real drive item ID for a text file
+ITEM_ID: str = os.getenv("DRIVE_ITEM_ID", "").strip()
 # ────────────────────────────────────────────────────────────────────────────
 
 
@@ -25,22 +28,25 @@ def main() -> None:
     Reads the original content, appends a marker line, and writes the updated
     content back to the same drive item.
     """
-    if ITEM_ID == "YOUR_ITEM_ID_HERE":
-        print("Please set ITEM_ID in this script to a real drive item ID.")
+    client = GraphClient()
+    drive = GraphDrive(client=client)
+
+    if not ITEM_ID:
+        print("Please set DRIVE_ITEM_ID in .env to a real drive item ID.")
         return
 
     print(f"Reading content of item: {ITEM_ID}")
-    original = read_file_content(ITEM_ID)
+    original = drive.read_file_content(ITEM_ID)
     print("\n--- Original content ---")
     print(original)
 
     new_content = original + "\n[Appended by msgraphtest example]\n"
     print("\nWriting updated content...")
-    result = write_file_content(ITEM_ID, new_content)
+    result = drive.write_file_content(ITEM_ID, new_content)
     print(f"Update successful. Item ID: {result.get('id')}")
 
     print("\nVerifying update — reading content again...")
-    updated = read_file_content(ITEM_ID)
+    updated = drive.read_file_content(ITEM_ID)
     print("--- Updated content ---")
     print(updated)
 

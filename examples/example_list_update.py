@@ -12,7 +12,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from msgraphtest.lists import get_list_items, update_list_item
+from msgraphtest.auth import GraphClient
+from msgraphtest.lists import GraphList
 
 # ── Configuration ───────────────────────────────────────────────────────────
 # Set to the ID of the item to update, or leave empty to update the first item
@@ -29,11 +30,14 @@ def main() -> None:
     If ITEM_ID is not set, updates the first item in the list. Updates the
     fields specified in UPDATE_FIELDS.
     """
+    client = GraphClient()
+    list_client = GraphList(client=client)
+
     item_id = ITEM_ID
 
     if not item_id:
         print("No ITEM_ID set — fetching the first list item...")
-        items = get_list_items()
+        items = list_client.get_list_items(fields_only=True, include_item_id=True)
         if not items:
             print("No items found in the list.")
             return
@@ -41,7 +45,7 @@ def main() -> None:
         print(f"  Using item ID: {item_id}")
 
     print(f"\nUpdating item {item_id} with: {UPDATE_FIELDS}")
-    result = update_list_item(item_id, UPDATE_FIELDS)
+    result = list_client.update_list_item(item_id, UPDATE_FIELDS)
     print("\nUpdate successful!")
     print(f"  Updated fields: {result}")
 

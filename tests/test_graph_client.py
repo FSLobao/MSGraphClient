@@ -1,14 +1,13 @@
-"""Tests for graph_client.py helpers."""
+"""Tests for Graph HTTP helper behavior in auth.py."""
 
 from unittest.mock import MagicMock
 
 import pytest
 import requests
 
-from msgraphtest.graph_client import (
+from msgraphtest.auth import (
+    GraphClient,
     GraphAuthorizationError,
-    _raise_for_status,
-    format_http_error,
 )
 
 
@@ -49,7 +48,7 @@ def test_format_http_error_with_graph_payload() -> None:
         }
     )
 
-    message = format_http_error(error)
+    message = GraphClient.format_http_error(error)
 
     assert "failed with 403 Forbidden" in message
     assert "accessDenied" in message
@@ -60,7 +59,7 @@ def test_format_http_error_with_text_payload() -> None:
     """Test plain-text error payloads are included when JSON is unavailable."""
     error = _http_error_with_response(text_payload="Forbidden")
 
-    message = format_http_error(error)
+    message = GraphClient.format_http_error(error)
 
     assert "failed with 403 Forbidden" in message
     assert "Detail: Forbidden" in message
@@ -70,7 +69,7 @@ def test_format_http_error_without_response() -> None:
     """Test fallback message when HTTPError has no bound response."""
     error = requests.HTTPError("boom")
 
-    message = format_http_error(error)
+    message = GraphClient.format_http_error(error)
 
     assert message == "HTTP error: boom"
 
@@ -93,7 +92,7 @@ def test_raise_for_status_raises_graph_authorization_error_for_403() -> None:
     response.raise_for_status.side_effect = error
 
     with pytest.raises(GraphAuthorizationError) as excinfo:
-        _raise_for_status(response)
+        GraphClient._raise_for_status(response)
 
     assert "Authorization error:" in str(excinfo.value)
 
@@ -111,7 +110,7 @@ def test_raise_for_status_raises_graph_authorization_error_for_401() -> None:
     response.raise_for_status.side_effect = error
 
     with pytest.raises(GraphAuthorizationError):
-        _raise_for_status(response)
+        GraphClient._raise_for_status(response)
 
 
 def test_raise_for_status_raises_http_error_for_non_auth_failures() -> None:
@@ -127,4 +126,4 @@ def test_raise_for_status_raises_http_error_for_non_auth_failures() -> None:
     response.raise_for_status.side_effect = error
 
     with pytest.raises(requests.HTTPError):
-        _raise_for_status(response)
+        GraphClient._raise_for_status(response)

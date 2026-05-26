@@ -1,0 +1,128 @@
+[
+    {
+        "name": "devAppRead",
+        "display_name": "devAppRead — Chaves de leitura para apps desktop",
+        "auth_type": "app_only",
+        "sign_in_audience": "AzureADMyOrg",
+        "site_id": "anatel365.sharepoint.com,2cf52991-409f-4d64-a492-442eccbabf9f,7fad1d86-65ba-4c88-94b9-2001d3f91ff2",
+        "access_type": "leitura",
+        "secret_display_name": "devAppRead-secret",
+        "secret_expiration_date": "01/01/2028"
+    },
+    {
+        "name": "devAppWrite",
+        "display_name": "devAppWrite — Chaves para ambiente de servidor",
+        "auth_type": "app_only",
+        "sign_in_audience": "AzureADMyOrg",
+        "site_id": "anatel365.sharepoint.com,2cf52991-409f-4d64-a492-442eccbabf9f,7fad1d86-65ba-4c88-94b9-2001d3f91ff2",
+        "access_type": "escrita",
+        "secret_display_name": "devAppWrite-secret",
+        "secret_expiration_date": "01/01/2028"
+    },
+    {
+        "name": "devUser",
+        "display_name": "devUser — Autenticação delegada de usuário (dev)",
+        "auth_type": "delegated",
+        "sign_in_audience": "AzureADMyOrg",
+        "site_id": "anatel365.sharepoint.com,2cf52991-409f-4d64-a492-442eccbabf9f,7fad1d86-65ba-4c88-94b9-2001d3f91ff2",
+        "access_type": "escrita",
+        "redirect_uri": "http://localhost:8000",
+        "secret_display_name": "devUser-secret",
+        "secret_expiration_date": "01/01/2028"
+    },
+    {
+        "name": "appRead",
+        "display_name": "appRead — Leitura de Dados Abertos (backend)",
+        "auth_type": "app_only",
+        "sign_in_audience": "AzureADMyOrg",
+        "site_id": "anatel365.sharepoint.com,2cf52991-409f-4d64-a492-442eccbabf9f,7fad1d86-65ba-4c88-94b9-2001d3f91ff2",
+        "access_type": "leitura",
+        "secret_display_name": "appRead-secret",
+        "secret_expiration_date": "01/01/2028"
+    },
+    {
+        "name": "appAnalisa",
+        "display_name": "appAnalisa — Leitura e escrita com ID usuário via appAnalise",
+        "auth_type": "delegated",
+        "sign_in_audience": "AzureADMyOrg",
+        "site_id": "anatel365.sharepoint.com,2cf52991-409f-4d64-a492-442eccbabf9f,7fad1d86-65ba-4c88-94b9-2001d3f91ff2",
+        "access_type": "escrita",
+        "redirect_uri": "https://localhost",
+        "secret_display_name": "appAnalisa-secret",
+        "secret_expiration_date": "01/01/2028"
+    },
+    {
+        "name": "monitorRNI",
+        "display_name": "monitorRNI — Leitura e escrita com ID usuário via monitorRNI",
+        "auth_type": "delegated",
+        "sign_in_audience": "AzureADMyOrg",
+        "site_id": "anatel365.sharepoint.com,2cf52991-409f-4d64-a492-442eccbabf9f,7fad1d86-65ba-4c88-94b9-2001d3f91ff2",
+        "access_type": "escrita",
+        "redirect_uri": "https://localhost",
+        "secret_display_name": "monitorRNI-secret",
+        "secret_expiration_date": "01/01/2028"
+    },
+    {
+        "name": "monitorSPED",
+        "display_name": "monitorSPED — Leitura e escrita com ID usuário via monitorSPED",
+        "auth_type": "delegated",
+        "sign_in_audience": "AzureADMyOrg",
+        "site_id": "anatel365.sharepoint.com,2cf52991-409f-4d64-a492-442eccbabf9f,7fad1d86-65ba-4c88-94b9-2001d3f91ff2",
+        "access_type": "escrita",
+        "redirect_uri": "https://localhost",
+        "secret_display_name": "monitorSPED-secret",
+        "secret_expiration_date": "01/01/2028"
+    },
+    {
+        "name": "SCH",
+        "display_name": "SCH — Leitura e escrita com ID usuário via SCH",
+        "auth_type": "delegated",
+        "sign_in_audience": "AzureADMyOrg",
+        "site_id": "anatel365.sharepoint.com,2cf52991-409f-4d64-a492-442eccbabf9f,7fad1d86-65ba-4c88-94b9-2001d3f91ff2",
+        "access_type": "escrita",
+        "redirect_uri": "https://localhost",
+        "secret_display_name": "SCH-secret",
+        "secret_expiration_date": "01/01/2028"
+    },
+    {
+        "name": "Regulatron",
+        "display_name": "Regulatron — Leitura e escrita com ID usuário via Regulatron",
+        "auth_type": "delegated",
+        "sign_in_audience": "AzureADMyOrg",
+        "site_id": "anatel365.sharepoint.com,2cf52991-409f-4d64-a492-442eccbabf9f,7fad1d86-65ba-4c88-94b9-2001d3f91ff2",
+        "access_type": "escrita",
+        "redirect_uri": "https://localhost",
+        "secret_display_name": "Regulatron-delegated-secret",
+        "secret_expiration_date": "01/01/2028"
+    },
+    {
+        "name": "scarab",
+        "display_name": "scarab — Backend de processamento de dados publicados pelos apps",
+        "auth_type": "app_only",
+        "sign_in_audience": "AzureADMyOrg",
+        "site_id": "anatel365.sharepoint.com,2cf52991-409f-4d64-a492-442eccbabf9f,7fad1d86-65ba-4c88-94b9-2001d3f91ff2",
+        "access_type": "escrita",
+        "secret_display_name": "scarab-secret",
+        "secret_expiration_date": "01/01/2028"
+    },
+    {
+        "name": "matlabWebServer",
+        "display_name": "matlabWebServer — Backend de dados para apps web",
+        "auth_type": "app_only",
+        "sign_in_audience": "AzureADMyOrg",
+        "site_id": "anatel365.sharepoint.com,2cf52991-409f-4d64-a492-442eccbabf9f,7fad1d86-65ba-4c88-94b9-2001d3f91ff2",
+        "access_type": "escrita",
+        "secret_display_name": "matlabWebServer-secret",
+        "secret_expiration_date": "01/01/2028"
+    },
+    {
+        "name": "regulatron",
+        "display_name": "regulatron — Backend de serviços para coleta e análise de dados",
+        "auth_type": "app_only",
+        "sign_in_audience": "AzureADMyOrg",
+        "site_id": "anatel365.sharepoint.com,2cf52991-409f-4d64-a492-442eccbabf9f,7fad1d86-65ba-4c88-94b9-2001d3f91ff2",
+        "access_type": "escrita",
+        "secret_display_name": "regulatron-backend-secret",
+        "secret_expiration_date": "01/01/2028"
+    }
+]

@@ -11,7 +11,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from msgraphtest.lists import create_list_item
+from msgraphtest.auth import GraphClient
+from msgraphtest.lists import GraphList
 
 # ── Configuration ───────────────────────────────────────────────────────────
 # Adjust these fields to match your list's columns
@@ -27,8 +28,11 @@ def main() -> None:
     Uses the fields defined in ITEM_FIELDS and displays the created item's
     ID and assigned field values.
     """
+    client = GraphClient()
+    list_client = GraphList(client=client)
+
     print(f"Creating new list item with fields: {ITEM_FIELDS}")
-    result = create_list_item(ITEM_FIELDS)
+    result = list_client.create_list_item(ITEM_FIELDS)
     print(f"\nItem created successfully!")
     print(f"  ID     : {result.get('id')}")
     print(f"  Fields : {result.get('fields')}")

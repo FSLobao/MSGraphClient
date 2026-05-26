@@ -99,152 +99,24 @@ Siga a mesma inscrição por site descrita na Etapa 4 de [setup_portal.md](setup
 
 ---
 
-## Etapa 5 — Adaptar `auth.py` para o fluxo interativo
+## Etapa 5 — Estado atual do pacote
 
 > 🔧 **Equipe de desenvolvimento**
 
-Substitua o conteúdo de `src/msgraphtest/auth.py` pelo seguinte:
+Este guia foi mantido apenas como referência do processo de configuração no tenant.
+A implementação Python antiga de autenticação delegada não faz mais parte da
+superfície atual do pacote `msgraphtest`.
 
-```python
-"""
-auth.py — MSAL delegated-auth (authorization code flow) helper.
+Hoje, o pacote expõe o fluxo classe-first baseado em `GraphClient` e
+`GraphAuthenticator` para Microsoft Graph. Se você precisar manter um fluxo
+delegado em outro projeto, implemente-o em um módulo separado para não misturar
+com a API atual.
 
-Acquires an access token for the Microsoft Graph API using the
-OAuth 2.0 authorization code flow (delegated / user identity).
-On first run, opens a browser for the user to sign in. Subsequent
-runs reuse the cached token silently until it expires.
-
-Required environment variables:
-    AZURE_TENANT_ID     – Azure AD tenant ID
-    AZURE_CLIENT_ID     – App registration client ID
-    AZURE_CLIENT_SECRET – App registration client secret
-    AZURE_REDIRECT_URI  – Redirect URI registered in the app (default: http://localhost:8000)
-
-Usage::
-
-    from msgraphtest.auth import get_access_token
-    token = get_access_token()
-"""
-
-import os
-
-import msal
-from dotenv import load_dotenv
-
-load_dotenv()
-
-GRAPH_SCOPES = [
-    "https://graph.microsoft.com/Sites.Selected",
-    "offline_access",
-]
-
-_TOKEN_CACHE_FILE = ".msal_token_cache.json"
-
-
-def _load_cache() -> msal.SerializableTokenCache:
-    cache = msal.SerializableTokenCache()
-    if os.path.exists(_TOKEN_CACHE_FILE):
-        with open(_TOKEN_CACHE_FILE) as f:
-            cache.deserialize(f.read())
-    return cache
-
-
-def _save_cache(cache: msal.SerializableTokenCache) -> None:
-    if cache.has_state_changed:
-        with open(_TOKEN_CACHE_FILE, "w") as f:
-            f.write(cache.serialize())
-
-
-def _get_config() -> tuple[str, str, str, str]:
-    tenant_id = os.environ.get("AZURE_TENANT_ID", "")
-    client_id = os.environ.get("AZURE_CLIENT_ID", "")
-    client_secret = os.environ.get("AZURE_CLIENT_SECRET", "")
-    redirect_uri = os.environ.get("AZURE_REDIRECT_URI", "http://localhost:8000")
-    if not all([tenant_id, client_id, client_secret]):
-        raise EnvironmentError(
-            "Missing one or more required environment variables: "
-            "AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET"
-        )
-    return tenant_id, client_id, client_secret, redirect_uri
-
-
-def get_access_token() -> str:
-    """Return a valid Graph API bearer token using delegated (user) auth.
-
-    Attempts silent token acquisition from cache first. If no cached token
-    is available or it has expired, opens a browser for the user to sign in
-    interactively.
-    """
-    tenant_id, client_id, client_secret, redirect_uri = _get_config()
-    authority = f"https://login.microsoftonline.com/{tenant_id}"
-    cache = _load_cache()
-
-    app = msal.ConfidentialClientApplication(
-        client_id=client_id,
-        client_credential=client_secret,
-        authority=authority,
-        token_cache=cache,
-    )
-
-    # Try silent acquisition from cache
-    accounts = app.get_accounts()
-    result = None
-    if accounts:
-        result = app.acquire_token_silent(GRAPH_SCOPES, account=accounts[0])
-
-    # Fall back to interactive login
-    if not result:
-        result = app.acquire_token_interactive(
-            scopes=GRAPH_SCOPES,
-            redirect_uri=redirect_uri,
-        )
-
-    _save_cache(cache)
-
-    if "access_token" not in result:
-        error = result.get("error", "unknown")
-        description = result.get("error_description", "")
-        raise RuntimeError(f"Failed to acquire token: {error} — {description}")
-
-    return result["access_token"]
-```
-
-> **Segurança:** O arquivo `.msal_token_cache.json` contém tokens de acesso e de atualização. Adicione-o ao `.gitignore` para não versioná-lo.
-
-Adicione ao `.gitignore`:
-
-```
-.msal_token_cache.json
-```
-
----
-
-## Etapa 6 — Configurar `.env` e executar
-
-> 🔧 **Equipe de desenvolvimento**
-
-```bash
-uv sync
-cp .env.example .env
-```
-
-Edite `.env` com os valores coletados. A variável `SHAREPOINT_SITE_ID` ainda é necessária; `AZURE_REDIRECT_URI` é opcional se usar o valor padrão `http://localhost:8000`:
-
-```ini
-AZURE_TENANT_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-AZURE_CLIENT_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-AZURE_CLIENT_SECRET=<your-secret-value>
-AZURE_REDIRECT_URI=http://localhost:8000
-SHAREPOINT_SITE_ID=contoso.sharepoint.com,<site-guid>,<web-guid>
-SHAREPOINT_DRIVE_ID=b!<drive-id>
-SHAREPOINT_LIST_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-```
-
-> Para descobrir `SHAREPOINT_SITE_ID`, `SHAREPOINT_DRIVE_ID` e `SHAREPOINT_LIST_ID`, use o [Microsoft Graph Explorer](https://developer.microsoft.com/graph/graph-explorer) autenticado com sua conta de usuário, conforme descrito nas Etapas 3 e 5 de [setup_portal.md](setup_portal.md).
-
-Na primeira execução, um navegador será aberto para login. Após autenticação, o token é armazenado em cache e as execuções seguintes serão silenciosas:
+Para o estado atual do repositório, use os exemplos e notebooks já alinhados com
+a API class-based:
 
 ```bash
 uv run examples/example_drive_list.py
 uv run examples/example_list_get.py
+uv run notebooks/graph_auth_site_attributes.ipynb
 ```

@@ -5,28 +5,20 @@ Usage:
     uv run examples/example_list_get.py
 """
 
-import re
-
 import pandas as pd
 from dotenv import load_dotenv
+from requests import HTTPError
+
+from msgraphtest.auth import GraphClient
+from msgraphtest.lists import GraphList
 
 load_dotenv()
 
-from requests import HTTPError
-
-from msgraphtest.graph_client import format_http_error
-from msgraphtest.lists import (
-    get_list_columns,
-    get_list_items,
-    get_list_view_columns,
-    get_list_views,
-)
-
 
 def _build_column_rename(columns: list[dict]) -> dict[str, str]:
-    """Return a mapping of ``fields.<name>`` → ``displayName`` for DataFrame rename."""
+    """Return a mapping of internal column names to display names."""
     return {
-        f"fields.{col['name']}": col["displayName"]
+        col["name"]: col["displayName"]
         for col in columns
         if col.get("name") and col.get("displayName")
     }
@@ -64,6 +56,9 @@ def main() -> None:
     """
     import os
 
+        client = GraphClient()
+        list_client = GraphList(client=client)
+
     # ── Option C: manual column config from environment ───────────────────────
     env_columns = os.environ.get("SHAREPOINT_VIEW_COLUMNS", "").strip()
     if env_columns:
@@ -71,30 +66,35 @@ def main() -> None:
         print(
             f"Usando colunas configuradas via SHAREPOINT_VIEW_COLUMNS: {internal_names}\n"
         )
-        # Resolve display names from the full column list (best-effort).
         try:
-            all_columns = get_list_columns()
-            name_to_display = {
-                col["name"]: col["displayName"]
-                for col in all_columns
-                if col.get("name") and col.get("displayName")
-            }
-        except HTTPError:
-            name_to_display = {}
+            filtered_columns = list_client.get_list_columns(
+                names=["Title", *internal_names]
+            )
+        except HTTPError as exc:
+            print(
+                "  Aviso: não foi possível resolver display names das colunas "
+                f"designadas — {GraphClient.format_http_error(exc)}"
+            )
+            filtered_columns = []
+
+        display_name_map = {
+            col["name"]: col["displayName"]
+            for col in filtered_columns
+            if col.get("name") and col.get("displayName")
+        }
         columns = [
-            {"name": n, "displayName": name_to_display.get(n, n)}
-            for n in internal_names
+            {"name": n, "displayName": display_name_map.get(n, n)}
+            for n in ["Title", *internal_names]
         ]
-        view_field_names = {f"fields.{n}" for n in internal_names}
         rename_map = _build_column_rename(columns)
     else:
         # ── Options A/B: interactive view selection via API ───────────────────
         print("Buscando views disponíveis...")
         try:
-            views = get_list_views()
+            views = list_client.get_list_views()
         except HTTPError as exc:
             print(
-                f"  Aviso: não foi possível obter as views — {format_http_error(exc)}"
+                f"  Aviso: não foi possível obter as views — {GraphClient.format_http_error(exc)}"
             )
             print(
                 "  Dica: defina SHAREPOINT_VIEW_COLUMNS no .env para selecionar colunas"
@@ -112,57 +112,38 @@ def main() -> None:
             view_name = selected_view.get("name", selected_view["id"])
             print(f"\nBuscando colunas da view '{view_name}'...")
             try:
-                columns = get_list_view_columns(selected_view["id"])
+                columns = list_client.get_list_view_columns(selected_view["id"])
             except HTTPError as exc:
                 print(
-                    f"  Aviso: não foi possível obter as colunas da view — {format_http_error(exc)}"
+                    f"  Aviso: não foi possível obter as colunas da view — {GraphClient.format_http_error(exc)}"
                 )
                 print("  Usando todas as colunas disponíveis...\n")
-                columns = get_list_columns()
-            view_field_names = {
-                f"fields.{col['name']}" for col in columns if col.get("name")
-            }
+                columns = list_client.get_list_columns()
         else:
             print("\nBuscando todas as definições de coluna...")
-            columns = get_list_columns()
-            view_field_names = None
+            columns = list_client.get_list_columns()
 
         rename_map = _build_column_rename(columns)
 
     print("Buscando itens da lista do SharePoint...\n")
-    items = get_list_items()
+    selected_fields = [
+        col["name"] for col in columns if col.get("name") and col["name"] != "Title"
+    ]
+    items = list_client.get_list_items(
+        select=selected_fields,
+        include_title=True,
+        fields_only=True,
+        include_item_id=True,
+    )
     if not items:
         print("(nenhum item encontrado)")
         return
 
-    df = pd.json_normalize(items)
-    if view_field_names is not None:
-        field_cols = [c for c in df.columns if c in view_field_names]
-    else:
-        field_cols = [c for c in df.columns if c.startswith("fields.")]
-
-    # Build a content DataFrame with only Title + field_0..99 columns.
-    content_field_cols = [
-        c
-        for c in field_cols
-        if c == "fields.Title" or re.fullmatch(r"fields\.field_(?:\d|[1-9]\d)", c)
-    ]
-    content_rename_map = {
-        c: rename_map.get(c, c.removeprefix("fields.")) for c in content_field_cols
-    }
-    df_list_content = df[content_field_cols].rename(columns=content_rename_map).copy()
-
-    # Everything else is treated as SharePoint metadata.
-    metadata_cols = [c for c in df.columns if c not in content_field_cols]
-    df_sharepoint_metadata = df[metadata_cols].copy()
+    df_list_content = pd.DataFrame(items).rename(columns=rename_map).copy()
 
     print("Conteudo da Lista")
     print(df_list_content.head())
-
-    print("\nSharePoint Metadata")
-    print(df_sharepoint_metadata.head())
-
-    print(f"\nTotal de linhas carregadas: {len(df)}")
+    print(f"\nTotal de linhas carregadas: {len(df_list_content)}")
 
 
 if __name__ == "__main__":

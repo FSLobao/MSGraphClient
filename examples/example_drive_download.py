@@ -13,7 +13,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from msgraphtest.drive import list_drive_items, download_file
+from msgraphtest.auth import GraphClient
+from msgraphtest.drive import GraphDrive
 
 # ── Configuration ───────────────────────────────────────────────────────────
 # Replace with a real drive item ID, or leave empty to use the first file found
@@ -28,11 +29,14 @@ def main() -> None:
     If ITEM_ID is not set, downloads the first file found in the drive root.
     Saved files are placed in the downloads/ folder.
     """
+    client = GraphClient()
+    drive = GraphDrive(client=client)
+
     item_id = ITEM_ID
 
     if not item_id:
         print("No ITEM_ID set — picking the first file from the drive root...")
-        items = list_drive_items()
+        items = drive.list_drive_items()
         files = [i for i in items if "folder" not in i]
         if not files:
             print("No files found in drive root.")
@@ -44,7 +48,7 @@ def main() -> None:
         filename = f"downloaded_{item_id}"
 
     dest = LOCAL_FOLDER / filename
-    result_path = download_file(item_id, dest)
+    result_path = drive.download_file(item_id, dest)
     print(f"\nFile saved to: {result_path}")
 
 

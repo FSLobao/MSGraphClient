@@ -7,15 +7,16 @@ Usage:
 
 from dotenv import load_dotenv
 
-from msgraphtest.site import get_site_contents
+from msgraphtest.auth import GraphClient
 
 load_dotenv()
 
 
 def main() -> None:
     """Display the configured site's summary plus available drives and lists."""
+    client = GraphClient()
     print("Fetching configured SharePoint site contents...\n")
-    contents = get_site_contents()
+    contents = client.authenticator.get_site_contents()
     site = contents["site"]
     drives = contents["drives"]
     lists_ = contents["lists"]

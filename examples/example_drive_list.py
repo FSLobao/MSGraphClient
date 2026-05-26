@@ -6,7 +6,8 @@ Usage:
 """
 
 from dotenv import load_dotenv
-from msgraphtest.drive import list_drive_items
+from msgraphtest.auth import GraphClient
+from msgraphtest.drive import GraphDrive
 
 load_dotenv()
 
@@ -16,8 +17,11 @@ def main() -> None:
 
     Shows the name, type (file or folder), and size of each item.
     """
+    client = GraphClient()
+    drive = GraphDrive(client=client)
+
     print("Listing items in the root of the configured drive...\n")
-    items = list_drive_items()
+    items = drive.list_drive_items()
     if not items:
         print("(no items found)")
         return

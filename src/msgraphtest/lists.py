@@ -1,8 +1,8 @@
 """
 lists.py — SharePoint list operations via Microsoft Graph.
 
-All functions operate against a specific list identified by
-SHAREPOINT_LIST_ID inside the site identified by SHAREPOINT_SITE_ID.
+The primary API is the ``GraphList`` class, which validates configuration and
+tests list access on initialization.
 
 Covered operations:
     get_list_views        — list available views (id, name)
@@ -20,167 +20,257 @@ import os
 import requests
 from dotenv import load_dotenv
 
-from msgraphtest.graph_client import GraphClient
+from msgraphtest.auth import GraphClient
 
 load_dotenv()
 
 
-def _site_id() -> str:
-    """Retrieve the SharePoint site ID from environment configuration.
+class GraphList:
+    """SharePoint list operations backed by Microsoft Graph.
 
-    Reads SHAREPOINT_SITE_ID from environment variables (typically set
-    via .env file).
-
-    Returns:
-        The SharePoint site ID string.
-
-    Raises:
-        EnvironmentError: If SHAREPOINT_SITE_ID is not set or is empty.
+    On initialization, resolves the site ID from
+    ``client.authenticator.sharepoint_site_id``, then from ``SHAREPOINT_SITE_ID``.
+    It also validates ``SHAREPOINT_LIST_ID``, creates/reuses a Graph client,
+    and fetches basic list metadata to confirm access.
     """
-    site_id = os.environ.get("SHAREPOINT_SITE_ID", "")
-    if not site_id:
-        raise EnvironmentError("SHAREPOINT_SITE_ID environment variable is not set.")
-    return site_id
 
+    def __init__(
+        self,
+        list_id: str | None = None,
+        client: GraphClient | None = None,
+    ) -> None:
+        """Initialize list operations with optional injected configuration.
 
-def _list_id() -> str:
-    """Retrieve the SharePoint list ID from environment configuration.
+        Args:
+            list_id: Optional SharePoint list ID. If omitted, reads from .env.
+            client: Optional pre-configured GraphClient instance.
+        """
+        self.client = client or GraphClient()
+        resolved_site_id = (
+            self._site_id_from_client(self.client) or self._site_id_from_env()
+        )
+        self.site_id: str = resolved_site_id
+        self.list_id: str = list_id or self._list_id_from_env()
 
-    Reads SHAREPOINT_LIST_ID from environment variables (typically set
-    via .env file).
+        # Public list attributes populated from Graph metadata.
+        self.list_info: dict = self._get_list_summary()
+        self.list_graph_id: str = str(self.list_info.get("id", ""))
+        self.list_name: str = str(self.list_info.get("name", ""))
+        self.list_display_name: str = str(self.list_info.get("displayName", ""))
+        self.list_web_url: str = str(self.list_info.get("webUrl", ""))
 
-    Returns:
-        The SharePoint list ID string.
+    def _site_id_from_env(self) -> str:
+        """Retrieve the SharePoint site ID from environment configuration.
 
-    Raises:
-        EnvironmentError: If SHAREPOINT_LIST_ID is not set or is empty.
-    """
-    list_id = os.environ.get("SHAREPOINT_LIST_ID", "")
-    if not list_id:
-        raise EnvironmentError("SHAREPOINT_LIST_ID environment variable is not set.")
-    return list_id
+            Reads SHAREPOINT_SITE_ID from environment variables (typically set
+        via .env file).
 
+            Returns:
+                The SharePoint site ID string.
 
-def get_list_views() -> list[dict]:
-    """Retrieve all views defined for the configured SharePoint list.
+            Raises:
+                EnvironmentError: If SHAREPOINT_SITE_ID is not set or is empty.
+        """
+        site_id = os.environ.get("SHAREPOINT_SITE_ID", "")
+        if not site_id:
+            raise EnvironmentError(
+                "SHAREPOINT_SITE_ID environment variable is not set."
+            )
+        return site_id
 
-    Tries the dedicated ``/views`` endpoint first.  If that returns an HTTP
-    error (common with ``Sites.Selected`` on certain list types), falls back to
-    fetching views as an expanded property of the list resource via
-    ``?$expand=views``.
+    @staticmethod
+    def _site_id_from_client(client: GraphClient) -> str:
+        """Return site id from a client's authenticator when available."""
+        authenticator = getattr(client, "authenticator", None)
+        site_id = getattr(authenticator, "sharepoint_site_id", None)
+        if isinstance(site_id, str):
+            return site_id
+        return ""
 
-    Returns:
-        A list of view dicts, each containing at minimum ``id`` and ``name``.
+    def _list_id_from_env(self) -> str:
+        """Retrieve the SharePoint list ID from environment configuration.
 
-    Raises:
-        requests.HTTPError: If both API calls fail.
-    """
-    client = GraphClient()
-    site_id = _site_id()
-    list_id = _list_id()
-    try:
-        data = client.get(f"/sites/{site_id}/lists/{list_id}/views")
+            Reads SHAREPOINT_LIST_ID from environment variables (typically set
+        via .env file).
+
+            Returns:
+                The SharePoint list ID string.
+
+            Raises:
+                EnvironmentError: If SHAREPOINT_LIST_ID is not set or is empty.
+        """
+        list_id = os.environ.get("SHAREPOINT_LIST_ID", "")
+        if not list_id:
+            raise EnvironmentError(
+                "SHAREPOINT_LIST_ID environment variable is not set."
+            )
+        return list_id
+
+    def _get_list_summary(self) -> dict:
+        """Return basic metadata for the configured list."""
+        select = "id,name,displayName,webUrl"
+        return self.client.get(
+            f"/sites/{self.site_id}/lists/{self.list_id}?$select={select}"
+        )
+
+    def get_list_views(self) -> list[dict]:
+        """Retrieve all views defined for the configured SharePoint list.
+
+        Tries the dedicated ``/views`` endpoint first. If that returns an HTTP
+        error (common with ``Sites.Selected`` on certain list types), falls back to
+        fetching views as an expanded property of the list resource via
+        ``?$expand=views``. If both fail, returns an empty list (some list types
+        do not support views).
+
+        Returns:
+            A list of view dicts, each containing at minimum ``id`` and ``name``.
+            Returns empty list if views are not available for this list type.
+        """
+        try:
+            data = self.client.get(f"/sites/{self.site_id}/lists/{self.list_id}/views")
+            return data.get("value", [])
+        except requests.HTTPError:
+            try:
+                data = self.client.get(
+                    f"/sites/{self.site_id}/lists/{self.list_id}?$expand=views"
+                )
+                views_block = data.get("views", {})
+                if isinstance(views_block, dict):
+                    return views_block.get("value", [])
+                return []
+            except requests.HTTPError:
+                # Some list types (e.g., tasks) don't support views; return empty
+                return []
+
+    def get_list_view_columns(self, view_id: str) -> list[dict]:
+        """Retrieve the column definitions visible in a specific list view."""
+        data = self.client.get(
+            f"/sites/{self.site_id}/lists/{self.list_id}/views/{view_id}/columns"
+        )
         return data.get("value", [])
-    except requests.HTTPError:
-        # Fallback: some list types do not expose the dedicated /views
-        # sub-endpoint (returns 400) but do support $expand on the list.
-        data = client.get(f"/sites/{site_id}/lists/{list_id}?$expand=views")
-        views_block = data.get("views", {})
-        if isinstance(views_block, dict):
-            return views_block.get("value", [])
-        return []
 
+    @staticmethod
+    def _escape_odata_string(value: str) -> str:
+        """Escape single quotes in OData string literals."""
+        return value.replace("'", "''")
 
-def get_list_view_columns(view_id: str) -> list[dict]:
-    """Retrieve the column definitions visible in a specific list view.
+    def get_list_columns(self, names: list[str] | None = None) -> list[dict]:
+        """Retrieve column definitions for the configured SharePoint list.
 
-    The returned dicts have the same shape as those from :func:`get_list_columns`
-    (``name`` and ``displayName``), so the same rename helpers work for both.
+        Args:
+            names: Optional internal column names to limit metadata retrieval.
+                When provided, requests only ``name`` and ``displayName`` for
+                the designated columns.
+        """
+        if names:
+            unique_names = list(dict.fromkeys(name for name in names if name))
+            if not unique_names:
+                return []
 
-    Args:
-        view_id: The GUID of the view, as returned by :func:`get_list_views`.
+            names_filter = " or ".join(
+                f"name eq '{self._escape_odata_string(name)}'" for name in unique_names
+            )
+            path = (
+                f"/sites/{self.site_id}/lists/{self.list_id}/columns"
+                f"?$select=name,displayName&$filter={names_filter}"
+            )
+        else:
+            path = f"/sites/{self.site_id}/lists/{self.list_id}/columns"
 
-    Returns:
-        A list of column definition dicts for the requested view.
-    """
-    client = GraphClient()
-    site_id = _site_id()
-    list_id = _list_id()
-    data = client.get(f"/sites/{site_id}/lists/{list_id}/views/{view_id}/columns")
-    return data.get("value", [])
+        data = self.client.get(path)
+        return data.get("value", [])
 
+    @staticmethod
+    def _normalize_selected_fields(
+        select: list[str] | None,
+        include_title: bool,
+    ) -> list[str]:
+        """Return an ordered list of unique field names for Graph selection."""
+        selected_fields: list[str] = []
 
-def get_list_columns() -> list[dict]:
-    """Retrieve column definitions for the configured SharePoint list.
+        if include_title:
+            selected_fields.append("Title")
 
-    Each dict contains at minimum:
-      - ``name``        — internal field name used in item ``fields`` (e.g. ``"field_1"``).
-      - ``displayName`` — human-readable label shown in SharePoint.
+        for field_name in select or []:
+            if field_name and field_name not in selected_fields:
+                selected_fields.append(field_name)
 
-    Returns:
-        A list of column definition dicts.
-    """
-    client = GraphClient()
-    site_id = _site_id()
-    list_id = _list_id()
-    data = client.get(f"/sites/{site_id}/lists/{list_id}/columns")
-    return data.get("value", [])
+        return selected_fields
 
+    def get_list_items(
+        self,
+        select: list[str] | None = None,
+        *,
+        include_title: bool = False,
+        fields_only: bool = False,
+        include_item_id: bool = False,
+    ) -> list[dict]:
+        """Retrieve items from the configured SharePoint list.
 
-def get_list_items(select: list[str] | None = None) -> list[dict]:
-    """Retrieve all items from the configured SharePoint list.
+        Args:
+            select: Optional internal field names to request from Graph. When
+                provided, the request uses ``expand=fields(select=...)`` so the
+                response omits unselected SharePoint field metadata.
+            include_title: When ``True``, include the ``Title`` field in the
+                Graph selection even if it is not present in ``select``. In
+                ``fields_only`` mode without ``select``, controls whether
+                ``Title`` is returned alongside ``field_*`` keys.
+            fields_only: When ``True``, return only each item's ``fields`` block
+                instead of the full Graph ``listItem`` envelope.
+            include_item_id: When ``True`` together with ``fields_only``, keep
+                each item's Graph ``id`` in the returned record.
+        """
+        has_select = bool(select)
+        selected_fields = self._normalize_selected_fields(select, include_title)
 
-    Args:
-        select: Optional list of field names to include in each item
-            (e.g. ``["Title", "Status", "id"]``).  If *None*, all
-            fields are returned.
+        expand = "fields"
+        if has_select and selected_fields:
+            expand = f"fields(select={','.join(selected_fields)})"
 
-    Returns:
-        A list of listItem dicts.  The ``fields`` key of each dict
-        contains the column values.
-    """
-    client = GraphClient()
-    site_id = _site_id()
-    list_id = _list_id()
-    path = f"/sites/{site_id}/lists/{list_id}/items?expand=fields"
-    if select:
-        path += f"&$select={','.join(select)}"
-    data = client.get(path)
-    return data.get("value", [])
+        path = f"/sites/{self.site_id}/lists/{self.list_id}/items?expand={expand}"
+        data = self.client.get(path)
+        items = data.get("value", [])
 
+        if fields_only:
+            normalized_items: list[dict] = []
+            for item in items:
+                if not isinstance(item, dict):
+                    continue
+                fields = item.get("fields", {})
+                if not isinstance(fields, dict):
+                    continue
 
-def create_list_item(fields: dict) -> dict:
-    """Create a new item in the configured SharePoint list.
+                if has_select:
+                    row = {
+                        key: value
+                        for key, value in fields.items()
+                        if key in selected_fields
+                    }
+                else:
+                    row = {
+                        key: value
+                        for key, value in fields.items()
+                        if isinstance(key, str) and key.startswith("field_")
+                    }
+                    if include_title and "Title" in fields:
+                        row["Title"] = fields["Title"]
 
-    Args:
-        fields: A dict of column name → value pairs for the new item,
-            e.g. ``{"Title": "My new item", "Status": "Active"}``.
+                if include_item_id:
+                    row["id"] = str(item.get("id", ""))
+                normalized_items.append(row)
+            return normalized_items
+        return items
 
-    Returns:
-        The Graph listItem dict for the newly created item (includes
-        the assigned ``id``).
-    """
-    client = GraphClient()
-    site_id = _site_id()
-    list_id = _list_id()
-    payload = {"fields": fields}
-    return client.post(f"/sites/{site_id}/lists/{list_id}/items", json=payload)
+    def create_list_item(self, fields: dict) -> dict:
+        """Create a new item in the configured SharePoint list."""
+        payload = {"fields": fields}
+        return self.client.post(
+            f"/sites/{self.site_id}/lists/{self.list_id}/items", json=payload
+        )
 
-
-def update_list_item(item_id: str, fields: dict) -> dict:
-    """Update fields on an existing list item.
-
-    Args:
-        item_id: The string ID of the list item to update.
-        fields:  A dict of column name → new value pairs.
-
-    Returns:
-        The updated Graph listItem fields dict.
-    """
-    client = GraphClient()
-    site_id = _site_id()
-    list_id = _list_id()
-    return client.patch(
-        f"/sites/{site_id}/lists/{list_id}/items/{item_id}/fields",
-        json=fields,
-    )
+    def update_list_item(self, item_id: str, fields: dict) -> dict:
+        """Update fields on an existing list item."""
+        return self.client.patch(
+            f"/sites/{self.site_id}/lists/{self.list_id}/items/{item_id}/fields",
+            json=fields,
+        )

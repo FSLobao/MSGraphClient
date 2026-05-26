@@ -22,8 +22,7 @@ MSGraphTest/
 │   │   └── Bulk-CreateApps.ps1        # idem, versão PowerShell
 │   └── msgraphtest/
 │       ├── __init__.py                # ponto de entrada do pacote
-│       ├── auth.py                    # auxiliar de token client-credentials com MSAL
-│       ├── graph_client.py            # wrapper HTTP fino para chamadas REST do Graph
+│       ├── auth.py                    # GraphClient + GraphAuthenticator
 │       ├── drive.py                   # operações de biblioteca de documentos
 │       └── lists.py                   # operações de lista do SharePoint
 ├── tests/
@@ -152,29 +151,42 @@ Obtém um token Bearer para a Microsoft Graph API usando o fluxo OAuth 2.0 de
 
 Para o fluxo delegado, veja [docs/setup_delegated_auth.md](docs/setup_delegated_auth.md).
 
-### `graph_client.py`
-`GraphClient` é um wrapper fino sobre `requests.Session` que injeta o token
-Bearer e expõe os helpers `get`, `post`, `patch`, `put_bytes` e `get_raw`.
+### `auth.py`
+`GraphClient` é o cliente principal do Microsoft Graph. Ele gerencia a sessão
+HTTP autenticada, expõe os helpers `get`, `post`, `patch`, `put_bytes` e
+`get_raw`, e possui um `GraphAuthenticator` associado para descoberta do site.
 
 ### `drive.py`
 Operações de biblioteca de documentos:
 
-| Função | Descrição |
+| Método | Descrição |
 |---|---|
-| `list_drive_items(folder_path)` | Lista os filhos de uma pasta |
-| `download_file(item_id, local_path)` | Baixa um arquivo para disco |
-| `upload_file(local_path, remote_folder)` | Envia um arquivo local (≤ 4 MB) |
-| `read_file_content(item_id)` | Retorna o conteúdo textual do arquivo |
-| `write_file_content(item_id, content)` | Sobrescreve o conteúdo textual do arquivo |
+| `GraphDrive.list_drive_items(folder_path)` | Lista os filhos de uma pasta |
+| `GraphDrive.download_file(item_id, local_path)` | Baixa um arquivo para disco |
+| `GraphDrive.upload_file(local_path, remote_folder)` | Envia um arquivo local (≤ 4 MB) |
+| `GraphDrive.read_file_content(item_id)` | Retorna o conteúdo textual do arquivo |
+| `GraphDrive.write_file_content(item_id, content)` | Sobrescreve o conteúdo textual do arquivo |
 
 ### `lists.py`
 Operações de listas do SharePoint:
 
-| Função | Descrição |
+| Método | Descrição |
 |---|---|
-| `get_list_items(select)` | Recupera todos os itens, opcionalmente selecionando campos |
-| `create_list_item(fields)` | Cria um novo item |
-| `update_list_item(item_id, fields)` | Atualiza campos de um item existente |
+| `GraphList.get_list_columns(names)` | Recupera colunas da lista, opcionalmente filtradas por nome |
+| `GraphList.get_list_views()` | Lista as views da lista |
+| `GraphList.get_list_view_columns(view_id)` | Lista as colunas visíveis em uma view |
+| `GraphList.get_list_items(select, fields_only=False, include_title=False, include_item_id=False)` | Recupera itens da lista com seleção opcional de campos |
+| `GraphList.create_list_item(fields)` | Cria um novo item |
+| `GraphList.update_list_item(item_id, fields)` | Atualiza campos de um item existente |
+
+### `auth.py`
+`GraphAuthenticator` concentra a descoberta do site:
+
+| Método | Descrição |
+|---|---|
+| `GraphAuthenticator.get_site_contents()` | Retorna metadados do site, drives e lists |
+| `GraphAuthenticator.list_site_drives()` | Lista os drives do site |
+| `GraphAuthenticator.list_site_lists()` | Lista as lists do site |
 
 ---
 
