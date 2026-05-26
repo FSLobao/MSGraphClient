@@ -56,8 +56,8 @@ def main() -> None:
     """
     import os
 
-        client = GraphClient()
-        list_client = GraphList(client=client)
+    client = GraphClient()
+    list_client = GraphList(client=client)
 
     # ── Option C: manual column config from environment ───────────────────────
     env_columns = os.environ.get("SHAREPOINT_VIEW_COLUMNS", "").strip()
