@@ -16,16 +16,17 @@ Licenciado sob a [GNU General Public License v3.0](LICENSE).
 
 <details>
 	<summary><strong>Índice</strong></summary>
-
-	- [Estrutura do projeto](#sec-estrutura-do-projeto)
-	- [Pre-requisitos](#sec-pre-requisitos)
-	- [Inicio rapido](#sec-inicio-rapido)
-	- [Notebooks interativos](#sec-notebooks-interativos)
-	- [Executando testes](#sec-executando-testes)
-	- [Criacao em lote de aplicacoes Azure AD](#sec-criacao-em-lote)
-	- [Visao geral dos modulos](#sec-visao-geral-modulos)
-	- [Documentacao adicional](#sec-documentacao-adicional)
-	- [Licenca](#sec-licenca)
+	<ul>
+		<li><a href="#sec-estrutura-do-projeto">Estrutura do projeto</a></li>
+		<li><a href="#sec-pre-requisitos">Pre-requisitos</a></li>
+		<li><a href="#sec-inicio-rapido">Inicio rapido</a></li>
+		<li><a href="#sec-notebooks-interativos">Notebooks interativos</a></li>
+		<li><a href="#sec-executando-testes">Executando testes</a></li>
+		<li><a href="#sec-criacao-em-lote">Criacao em lote de aplicacoes Azure AD</a></li>
+		<li><a href="#sec-visao-geral-modulos">Visao geral dos modulos</a></li>
+		<li><a href="#sec-documentacao-adicional">Documentacao adicional</a></li>
+		<li><a href="#sec-licenca">Licenca</a></li>
+	</ul>
 </details>
 
 ---
@@ -33,6 +34,10 @@ Licenciado sob a [GNU General Public License v3.0](LICENSE).
 <a id="sec-estrutura-do-projeto"></a>
 
 ## Estrutura do projeto
+
+Escolha a visualização que preferir. Esta seção traz 3 alternativas para comparar renderização e legibilidade.
+
+### Opção 1: Árvore textual (formato atual)
 
 ```
 MSGraphTest/
@@ -71,6 +76,107 @@ MSGraphTest/
 ├── pyproject.toml
 └── LICENSE
 ```
+
+### Opção 2: Tabela estruturada (nome e descrição separados)
+
+| Caminho | Tipo | Descrição |
+|---|---|---|
+| src/bulkCreate/bulk_create_apps.py | Script Python | Utilitário para criar múltiplas apps em lote |
+| src/bulkCreate/Bulk-CreateApps.ps1 | Script PowerShell | Utilitário equivalente em PowerShell |
+| src/msgraphtest/__init__.py | Módulo | Ponto de entrada do pacote |
+| src/msgraphtest/auth.py | Módulo | GraphClient + GraphAuthenticator |
+| src/msgraphtest/drive.py | Módulo | Operações de biblioteca de documentos |
+| src/msgraphtest/lists.py | Módulo | Operações de lista do SharePoint |
+| tests/ | Diretório | Testes automatizados |
+| examples/ | Diretório | Exemplos executáveis de uso |
+| notebooks/graph_auth_site_attributes.ipynb | Notebook | Fluxo interativo end-to-end (auth + drive + lists) |
+| docs/ | Diretório | Guias e documentação de setup |
+| downloads/ | Diretório | Destino de downloads locais (ignorado por git) |
+| .env.example | Arquivo de configuração | Modelo para variáveis de ambiente |
+| pyproject.toml | Arquivo de projeto | Dependências e configuração Python |
+| LICENSE | Licença | GPL v3.0 |
+
+### Opção 3: Estrutura HTML colapsável
+
+<details>
+	<summary><strong>Expandir estrutura por grupos</strong></summary>
+
+	<details>
+		<summary><strong>src/</strong> - codigo-fonte principal</summary>
+
+		<details>
+			<summary><strong>bulkCreate/</strong> - criacao de apps em lote</summary>
+			<ul>
+				<li><code>bulk_create_apps.py</code> - criacao em lote (Python)</li>
+				<li><code>Bulk-CreateApps.ps1</code> - criacao em lote (PowerShell)</li>
+			</ul>
+		</details>
+
+		<details>
+			<summary><strong>msgraphtest/</strong> - modulos de Graph e SharePoint</summary>
+			<ul>
+				<li><code>__init__.py</code> - ponto de entrada do pacote</li>
+				<li><code>auth.py</code> - cliente e autenticador Graph</li>
+				<li><code>drive.py</code> - operacoes de drive</li>
+				<li><code>lists.py</code> - operacoes de listas</li>
+			</ul>
+		</details>
+	</details>
+
+	<details>
+		<summary><strong>tests/</strong> - testes automatizados</summary>
+		<ul>
+			<li><code>test_auth.py</code></li>
+			<li><code>test_drive.py</code></li>
+			<li><code>test_lists.py</code></li>
+		</ul>
+	</details>
+
+	<details>
+		<summary><strong>examples/</strong> - scripts de exemplo</summary>
+		<ul>
+			<li><code>example_drive_list.py</code></li>
+			<li><code>example_drive_download.py</code></li>
+			<li><code>example_drive_upload.py</code></li>
+			<li><code>example_drive_read_write.py</code></li>
+			<li><code>example_list_get.py</code></li>
+			<li><code>example_list_create.py</code></li>
+			<li><code>example_list_update.py</code></li>
+			<li><code>bulk_create_example.json</code></li>
+		</ul>
+	</details>
+
+	<details>
+		<summary><strong>notebooks/</strong> - testes interativos</summary>
+		<ul>
+			<li><code>graph_auth_site_attributes.ipynb</code></li>
+		</ul>
+	</details>
+
+	<details>
+		<summary><strong>docs/</strong> - documentacao adicional</summary>
+		<ul>
+			<li><code>getting_started.md</code></li>
+			<li><code>setup_cli.md</code></li>
+			<li><code>setup_portal.md</code></li>
+			<li><code>setup_delegated_auth.md</code></li>
+			<li><code>bulk_create_apps.md</code></li>
+		</ul>
+	</details>
+
+	<details>
+		<summary><strong>downloads/</strong> - artefatos locais (gitignored)</summary>
+		<ul>
+			<li>Arquivos de download e upload de teste gerados localmente</li>
+		</ul>
+	</details>
+
+	<ul>
+		<li><code>.env.example</code> - modelo de configuracao</li>
+		<li><code>pyproject.toml</code> - configuracao do projeto</li>
+		<li><code>LICENSE</code> - licenca do repositorio</li>
+	</ul>
+</details>
 
 [⬆ Voltar ao topo](#topo)
 
