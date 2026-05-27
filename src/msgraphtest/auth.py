@@ -12,16 +12,16 @@ Required environment variables depend on mode:
 """
 
 import os
-from typing import Any
 
 import msal
 import requests
 from dotenv import load_dotenv
 
+from msgraphtest.client import GraphAuthorizationError, GraphClient  # noqa: F401
+
 load_dotenv()
 
 GRAPH_SCOPES = ["https://graph.microsoft.com/.default"]
-GRAPH_BASE_URL = "https://graph.microsoft.com/v1.0"
 DEFAULT_GRAPH_AUTH_MODE = "client_credentials"
 # Reserved OIDC scopes (openid, profile, offline_access) are added automatically
 # by MSAL for interactive and device_code flows. Passing them explicitly raises
@@ -34,187 +34,107 @@ DELEGATED_GRAPH_SCOPES = [
 ]
 
 # Public API exported by this module.
+# GraphAuthorizationError and GraphClient are re-exported from msgraphtest.client.
 __all__ = ["GraphAuthorizationError", "GraphClient", "GraphAuthenticator"]
 
 
-class GraphAuthorizationError(requests.HTTPError):
-    """HTTP error raised when caller lacks authorization to a Graph resource."""
+def _token_cache_path() -> str:
+    """Return the path for the persistent MSAL delegated token cache file."""
+    cache_dir = os.path.join(
+        os.environ.get("LOCALAPPDATA") or os.path.expanduser("~"),
+        "MSGraphTest",
+    )
+    os.makedirs(cache_dir, exist_ok=True)
+    return os.path.join(cache_dir, "token_cache.json")
 
 
-class GraphClient:
-    """Minimal Microsoft Graph API client.
+def _load_token_cache() -> "msal.SerializableTokenCache":
+    """Load the MSAL token cache from disk, returning an empty cache on error."""
+    cache = msal.SerializableTokenCache()
+    path = _token_cache_path()
+    if os.path.isfile(path):
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                cache.deserialize(f.read())
+        except (OSError, ValueError):
+            pass
+    return cache
 
-    Public methods:
-        - format_http_error
-        - get
-        - post
-        - patch
-        - put_bytes
-        - get_raw
 
-    Public attributes:
-        - authenticator
+def _save_token_cache(cache: "msal.SerializableTokenCache") -> None:
+    """Persist the MSAL token cache to disk when its state has changed."""
+    if not cache.has_state_changed:
+        return
+    try:
+        with open(_token_cache_path(), "w", encoding="utf-8") as f:
+            f.write(cache.serialize())
+    except OSError:
+        pass
 
-    Internal methods (implementation detail):
-        - _extract_graph_error_detail
-        - _raise_for_status
+
+def _find_chromium_app_browser(name: str = "_msal_popup") -> str | None:
+    """Register a Chromium-based browser in app mode (no address bar or tabs).
+
+    Tries Microsoft Edge then Google Chrome on Windows. When found, registers
+    the browser with the ``--app`` flag so the auth page opens in a minimal
+    app window instead of a regular tab in an existing browser instance.
+
+    An isolated profile stored under ``%LOCALAPPDATA%\\MSGraphTest\\popup-profile``
+    is used so Chromium always applies ``--window-size`` without restoring any
+    previously saved window geometry.  The ``--no-signin`` and
+    ``--disable-sync`` flags suppress the browser's own account sign-in prompt
+    on that profile.  Azure AD session state is managed through MSAL's
+    persistent token cache instead, so the browser is only opened on the first
+    call (or after a long token expiry).
+
+    Window size is read from the ``GRAPH_AUTH_POPUP_SIZE`` environment variable
+    in ``WIDTHxHEIGHT`` format (e.g. ``"600x800"``). Falls back to ``520x680``
+    when the variable is absent or has an invalid format.
+
+    Returns the registered browser name to pass as ``browser_name`` to MSAL,
+    or ``None`` when no compatible browser is found on the system.
     """
+    import webbrowser
 
-    @staticmethod
-    def format_http_error(error: requests.HTTPError) -> str:
-        """Return a clean, user-facing message for an HTTP error."""
-        response = error.response
-        if response is None:
-            return f"HTTP error: {error}"
+    raw_size = os.environ.get("GRAPH_AUTH_POPUP_SIZE", "520x680")
+    try:
+        _w, _h = (int(p) for p in raw_size.lower().replace(",", "x").split("x", 1))
+    except (ValueError, TypeError):
+        _w, _h = 520, 680
 
-        method = response.request.method if response.request else "HTTP"
-        url = response.url or "<unknown-url>"
-        status = response.status_code
-        reason = response.reason or ""
-        base = f"{method} {url} failed with {status} {reason}".strip()
+    popup_profile = os.path.join(
+        os.environ.get("LOCALAPPDATA") or os.path.expanduser("~"),
+        "MSGraphTest",
+        "popup-profile",
+    )
+    os.makedirs(popup_profile, exist_ok=True)
 
-        detail = GraphClient._extract_graph_error_detail(response)
-        if detail:
-            return f"{base}. Detail: {detail}"
-        return base
-
-    @staticmethod
-    def _extract_graph_error_detail(response: requests.Response) -> str | None:
-        """Extract Graph error code/message from an HTTP response, if available."""
-        try:
-            payload = response.json()
-        except ValueError:
-            text = response.text.strip()
-            return text or None
-
-        if not isinstance(payload, dict):
-            return None
-
-        error_obj = payload.get("error")
-        if isinstance(error_obj, dict):
-            code = str(error_obj.get("code", "")).strip()
-            message = str(error_obj.get("message", "")).strip()
-            if code and message:
-                return f"{code}: {message}"
-            if message:
-                return message
-            if code:
-                return code
-
-        return None
-
-    @staticmethod
-    def _raise_for_status(response: requests.Response) -> None:
-        """Raise enriched HTTP exceptions, specializing authorization failures."""
-        try:
-            response.raise_for_status()
-            return
-        except requests.HTTPError as error:
-            message = GraphClient.format_http_error(error)
-            status = response.status_code
-            if status in (401, 403):
-                raise GraphAuthorizationError(
-                    f"Authorization error: {message}",
-                    response=response,
-                    request=response.request,
-                ) from error
-
-            raise requests.HTTPError(
-                message,
-                response=response,
-                request=response.request,
-            ) from error
-
-    def __init__(
-        self,
-        token: str | None = None,
-        authenticator: "GraphAuthenticator | None" = None,
-        sharepoint_site_id: str | None = None,
-        auth_mode: str | None = None,
-    ) -> None:
-        """Initialize Graph client and ensure an attached GraphAuthenticator.
-
-        Args:
-            token: Optional explicit bearer token.
-            authenticator: Optional pre-built GraphAuthenticator to reuse.
-            sharepoint_site_id: Optional site id forwarded to authenticator init.
-        """
-        if authenticator is None:
-            self.authenticator = GraphAuthenticator(
-                sharepoint_site_id=sharepoint_site_id,
-                token=token,
-                create_client=False,
-                auth_mode=auth_mode,
+    candidates = [
+        r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
+        r"C:\Program Files\Microsoft\Edge\Application\msedge.exe",
+        r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+        r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+    ]
+    for path in candidates:
+        if os.path.isfile(path):
+            webbrowser.register(
+                name,
+                None,
+                webbrowser.BackgroundBrowser(
+                    [
+                        path,
+                        "--app=%s",
+                        f"--window-size={_w},{_h}",
+                        f"--user-data-dir={popup_profile}",
+                        "--no-first-run",
+                        "--no-default-browser-check",
+                        "--no-signin",
+                        "--disable-sync",
+                    ]
+                ),
             )
-        else:
-            self.authenticator = authenticator
-            if sharepoint_site_id:
-                self.authenticator.sharepoint_site_id = sharepoint_site_id
-
-        self._token: str = (
-            token
-            or self.authenticator.token
-            or GraphAuthenticator._acquire_token_from_env_internal(
-                auth_mode=self.authenticator.auth_mode
-            )
-        )
-        self.authenticator.token = self._token
-
-        self._session = requests.Session()
-        self._session.headers.update(
-            {
-                "Authorization": f"Bearer {self._token}",
-                "Accept": "application/json",
-            }
-        )
-
-        # Bind authenticator to this concrete Graph client instance.
-        self.authenticator.client = self
-        self.authenticator._client = self
-        if self.authenticator.sharepoint_site_id and not self.authenticator.site_data:
-            self.authenticator._load_site_summary()
-
-    def get(self, path: str, **kwargs: Any) -> dict:
-        """Make a GET request to the Graph API."""
-        url = f"{GRAPH_BASE_URL}{path}"
-        response = self._session.get(url, **kwargs)
-        self._raise_for_status(response)
-        return response.json()
-
-    def post(self, path: str, json: dict, **kwargs: Any) -> dict:
-        """Make a POST request to the Graph API."""
-        url = f"{GRAPH_BASE_URL}{path}"
-        response = self._session.post(url, json=json, **kwargs)
-        self._raise_for_status(response)
-        return response.json()
-
-    def patch(self, path: str, json: dict, **kwargs: Any) -> dict:
-        """Make a PATCH request to the Graph API."""
-        url = f"{GRAPH_BASE_URL}{path}"
-        response = self._session.patch(url, json=json, **kwargs)
-        self._raise_for_status(response)
-        return response.json()
-
-    def put_bytes(
-        self,
-        path: str,
-        data: bytes,
-        content_type: str = "application/octet-stream",
-        **kwargs: Any,
-    ) -> dict:
-        """Make a PUT request to the Graph API with binary data."""
-        url = f"{GRAPH_BASE_URL}{path}"
-        headers = {"Content-Type": content_type}
-        response = self._session.put(url, data=data, headers=headers, **kwargs)
-        self._raise_for_status(response)
-        return response.json()
-
-    def get_raw(self, path: str, **kwargs: Any) -> bytes:
-        """Make a GET request and return raw binary response body."""
-        url = f"{GRAPH_BASE_URL}{path}"
-        response = self._session.get(url, **kwargs)
-        self._raise_for_status(response)
-        return response.content
+            return name
+    return None
 
 
 class GraphAuthenticator:
@@ -463,30 +383,81 @@ class GraphAuthenticator:
     ) -> dict | None:
         """Acquire token payload from Azure AD via delegated authentication.
 
+        Tokens are cached in ``%LOCALAPPDATA%\\MSGraphTest\\token_cache.json``
+        so the browser is only opened on the first call or after long expiry.
+        Subsequent calls are served silently from the cached refresh token.
+
         MSAL 1.x uses a ``port`` integer parameter (not ``redirect_uri``) for
         acquire_token_interactive.  The port is extracted from ``redirect_uri``
         when it contains one (e.g. "http://localhost:8356" → 8356); otherwise
         MSAL picks a random available port.
         """
         from urllib.parse import urlparse
+        import msal.application as _msal_app
 
         authority = f"https://login.microsoftonline.com/{tenant_id}"
+        cache = _load_token_cache()
         app = msal.PublicClientApplication(
             client_id=client_id,
             authority=authority,
+            token_cache=cache,
         )
 
         if login_mode == "device_code":
+            # Try silent first; fall back to device-code flow.
+            accounts = app.get_accounts()
+            if accounts:
+                result = app.acquire_token_silent(scopes, account=accounts[0])
+                if result and "access_token" in result:
+                    _save_token_cache(cache)
+                    return result
             flow = app.initiate_device_flow(scopes=scopes)
             if "user_code" not in flow:
                 return flow if isinstance(flow, dict) else None
             print(flow.get("message", "Complete device authentication to continue."))
             result = app.acquire_token_by_device_flow(flow)
+            _save_token_cache(cache)
             return result if isinstance(result, dict) else None
+
+        # Try silent first; fall back to interactive browser.
+        accounts = app.get_accounts()
+        if accounts:
+            result = app.acquire_token_silent(scopes, account=accounts[0])
+            if result and "access_token" in result:
+                _save_token_cache(cache)
+                return result
 
         parsed = urlparse(redirect_uri)
         port: int | None = parsed.port  # None when no port is specified
-        result = app.acquire_token_interactive(scopes=scopes, port=port)
+
+        # MSAL already passes browser_name=_preferred_browser() explicitly in
+        # acquire_token_interactive, so we cannot inject it via **kwargs (would
+        # cause "multiple values" TypeError).  Temporarily replace the internal
+        # _preferred_browser function so MSAL picks up our popup browser instead.
+        _success_html = (
+            "<html><body style='font-family:sans-serif;display:flex;align-items:center;"
+            "justify-content:center;height:100vh;margin:0'>"
+            "<p>Authentication complete. This window will close automatically.</p>"
+            "<script>window.onload=function(){"
+            "window.open('','_self','');window.close();};</script>"
+            "</body></html>"
+        )
+        popup_name = _find_chromium_app_browser()
+        if popup_name:
+            _orig = _msal_app._preferred_browser
+            _msal_app._preferred_browser = lambda: popup_name
+            try:
+                result = app.acquire_token_interactive(
+                    scopes=scopes, port=port, success_template=_success_html
+                )
+            finally:
+                _msal_app._preferred_browser = _orig
+        else:
+            result = app.acquire_token_interactive(
+                scopes=scopes, port=port, success_template=_success_html
+            )
+
+        _save_token_cache(cache)
         return result if isinstance(result, dict) else None
 
     @staticmethod
