@@ -1,3 +1,5 @@
+<a id="topo"></a>
+
 # MSGraphTest — SharePoint via Microsoft Graph API
 
 Um projeto de teste em Python demonstrando como acessar o SharePoint através da
@@ -11,6 +13,24 @@ para autenticação `app_only` quanto para autenticação `delegated`.
 Licenciado sob a [GNU General Public License v3.0](LICENSE).
 
 ---
+
+<details>
+	<summary><strong>Índice</strong></summary>
+
+	- [Estrutura do projeto](#sec-estrutura-do-projeto)
+	- [Pre-requisitos](#sec-pre-requisitos)
+	- [Inicio rapido](#sec-inicio-rapido)
+	- [Notebooks interativos](#sec-notebooks-interativos)
+	- [Executando testes](#sec-executando-testes)
+	- [Criacao em lote de aplicacoes Azure AD](#sec-criacao-em-lote)
+	- [Visao geral dos modulos](#sec-visao-geral-modulos)
+	- [Documentacao adicional](#sec-documentacao-adicional)
+	- [Licenca](#sec-licenca)
+</details>
+
+---
+
+<a id="sec-estrutura-do-projeto"></a>
 
 ## Estrutura do projeto
 
@@ -38,6 +58,8 @@ MSGraphTest/
 │   ├── example_list_create.py         # criar item de lista
 │   ├── example_list_update.py         # atualizar item de lista
 │   └── bulk_create_example.json       # modelo de entrada para bulk_create_apps
+├── notebooks/
+│   └── graph_auth_site_attributes.ipynb  # fluxo interativo end-to-end (auth + drive + lists)
 ├── docs/
 │   ├── getting_started.md             # guia de início rápido
 │   ├── setup_cli.md                   # setup com Azure CLI / PowerShell
@@ -50,7 +72,11 @@ MSGraphTest/
 └── LICENSE
 ```
 
+[⬆ Voltar ao topo](#topo)
+
 ---
+
+<a id="sec-pre-requisitos"></a>
 
 ## Pré-requisitos
 
@@ -62,7 +88,11 @@ MSGraphTest/
 
 > Este repositório **não usa** permissões amplas como `Sites.Read.All` ou `Sites.ReadWrite.All` para acesso a dados no SharePoint.
 
+[⬆ Voltar ao topo](#topo)
+
 ---
+
+<a id="sec-inicio-rapido"></a>
 
 ## Início rápido
 
@@ -110,7 +140,48 @@ uv run examples/example_drive_list.py
 uv run examples/example_list_get.py
 ```
 
+[⬆ Voltar ao topo](#topo)
+
 ---
+
+<a id="sec-notebooks-interativos"></a>
+
+## Notebooks interativos (alternativa aos examples)
+
+Além dos scripts em `examples/`, você pode usar notebooks para validar o fluxo de forma
+interativa, inspecionando respostas e DataFrames a cada etapa.
+
+Notebook principal:
+
+- `notebooks/graph_auth_site_attributes.ipynb`
+
+Esse notebook executa um fluxo end-to-end para:
+
+1. carregar `.env` e autenticar no Graph;
+2. consultar atributos e conteúdo do site (drives/lists);
+3. testar operações de conteúdo no drive (write, update, load e download);
+4. testar criação e atualização de itens em lista com visualização tabular.
+
+Quando usar notebooks em vez dos examples:
+
+- quando você quer depurar autenticação passo a passo;
+- quando precisa validar transformação e inspeção de dados em DataFrames;
+- quando deseja testar rapidamente mudanças no processo de edição de conteúdo.
+
+> [!WARNING]
+> **Boas práticas de higiene (credenciais e dados sensíveis)**
+>
+> - Nunca imprima valores de variáveis sensíveis do `.env` (como `AZURE_CLIENT_SECRET`).
+> - Evite exibir tokens, headers de autorização ou payloads contendo segredos.
+> - Limpe os outputs do notebook antes de commit (`Clear All Outputs`) para não versionar dados sensíveis.
+> - Mantenha o arquivo `.env` fora do versionamento e use apenas `.env.example` no repositório.
+> - Se houver exposição acidental de segredo em output/código, revogue e gere novas credenciais imediatamente.
+
+[⬆ Voltar ao topo](#topo)
+
+---
+
+<a id="sec-executando-testes"></a>
 
 ## Executando testes
 
@@ -121,7 +192,11 @@ uv run pytest
 Relatório de cobertura é impresso automaticamente. Os testes usam mocking e **não**
 requerem credenciais reais.
 
+[⬆ Voltar ao topo](#topo)
+
 ---
+
+<a id="sec-criacao-em-lote"></a>
 
 ## Criação em lote de aplicações Azure AD
 
@@ -141,7 +216,11 @@ O utilitário em lote aplica o mesmo modelo de segurança do restante do projeto
 - usa `Sites.Selected` como `Scope` para `delegated`
 - não adiciona autorizações de dados no nível do tenant
 
+[⬆ Voltar ao topo](#topo)
+
 ---
+
+<a id="sec-visao-geral-modulos"></a>
 
 ## Visão geral dos módulos
 
@@ -188,7 +267,11 @@ Operações de listas do SharePoint:
 | `GraphAuthenticator.list_site_drives()` | Lista os drives do site |
 | `GraphAuthenticator.list_site_lists()` | Lista as lists do site |
 
+[⬆ Voltar ao topo](#topo)
+
 ---
+
+<a id="sec-documentacao-adicional"></a>
 
 ## Documentação adicional
 
@@ -198,9 +281,15 @@ Operações de listas do SharePoint:
 - [docs/setup_delegated_auth.md](docs/setup_delegated_auth.md) — fluxo delegado com login interativo
 - [docs/bulk_create_apps.md](docs/bulk_create_apps.md) — criação em lote de aplicações
 
+[⬆ Voltar ao topo](#topo)
+
 ---
+
+<a id="sec-licenca"></a>
 
 ## Licença
 
 Este projeto é licenciado sob a **GNU General Public License v3.0**.
 Consulte [LICENSE](LICENSE) para o texto completo.
+
+[⬆ Voltar ao topo](#topo)
