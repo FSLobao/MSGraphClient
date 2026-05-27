@@ -7,7 +7,7 @@ creates Azure AD app registrations with required permissions and secrets,
 and outputs an updated JSON file with the generated credentials.
 
 Usage:
-    python -m msgraphtest.bulk_create_apps input.json [--output output.json] [--method cli|powershell]
+    python -m python.bulk_create_apps input.json [--output output.json] [--method cli|powershell]
 
 Input JSON format:
     [
@@ -823,8 +823,8 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  python -m msgraphtest.bulk_create_apps apps.json
-  python -m msgraphtest.bulk_create_apps apps.json --output apps-created.json --method powershell
+    python -m python.bulk_create_apps apps.json
+    python -m python.bulk_create_apps apps.json --output apps-created.json --method powershell
         """,
     )
     parser.add_argument("input", help="Input JSON file with app configurations")

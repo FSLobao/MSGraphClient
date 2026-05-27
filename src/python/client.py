@@ -4,7 +4,7 @@ This module is intentionally kept separate from authentication logic
 so that HTTP-level concerns (request dispatch, error formatting) are
 decoupled from token acquisition.
 
-The ``GraphAuthenticator`` class lives in :mod:`msgraphtest.auth` and is
+The ``GraphAuthenticator`` class lives in :mod:`python.auth` and is
 imported lazily inside :meth:`GraphClient.__init__` to avoid a circular
 dependency (``GraphAuthenticator`` creates ``GraphClient`` instances at
 runtime and vice-versa).
@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING, Any
 import requests
 
 if TYPE_CHECKING:
-    from msgraphtest.auth import GraphAuthenticator
+    from python.auth import GraphAuthenticator
 
 GRAPH_BASE_URL = "https://graph.microsoft.com/v1.0"
 
@@ -127,8 +127,8 @@ class GraphClient:
             sharepoint_site_id: Optional site id forwarded to authenticator init.
             auth_mode: Optional auth mode override (client_credentials | delegated).
         """
-        # Lazy import breaks the circular dependency with msgraphtest.auth.
-        from msgraphtest.auth import GraphAuthenticator as _GraphAuthenticator
+        # Lazy import breaks the circular dependency with python.auth.
+        from python.auth import GraphAuthenticator as _GraphAuthenticator
 
         if authenticator is None:
             self.authenticator = _GraphAuthenticator(

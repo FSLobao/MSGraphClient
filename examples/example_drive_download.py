@@ -13,8 +13,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from msgraphtest.auth import GraphClient
-from msgraphtest.drive import GraphDrive
+from python.auth import GraphClient
+from python.drive import GraphDrive
 
 # ── Configuration ───────────────────────────────────────────────────────────
 # Replace with a real drive item ID, or leave empty to use the first file found

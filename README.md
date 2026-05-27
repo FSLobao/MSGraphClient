@@ -46,7 +46,7 @@ Este repositório apresenta a seguinte organização:
 				<li><code>Bulk-CreateApps.ps1</code>: alternativa PowerShell para execucao operacional em ambientes Windows</li>
 			</ul>
 		</li>
-		<li><strong>msgraphtest/</strong>: implementacao do cliente Graph e operacoes de SharePoint
+		<li><strong>python/</strong>: implementacao do cliente Graph e operacoes de SharePoint
 			<ul>
 				<li><code>__init__.py</code>: ponto de entrada do pacote para importacoes publicas</li>
 				<li><code>auth.py</code>: autenticacao (app_only/delegated), sessao HTTP e descoberta de metadados do site</li>

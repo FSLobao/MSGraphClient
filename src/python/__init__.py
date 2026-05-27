@@ -1,5 +1,5 @@
 """
-msgraphtest — Microsoft Graph / SharePoint test utilities.
+python — Microsoft Graph / SharePoint test utilities.
 
 Subpackages:
   auth        — MSAL authentication helpers (GraphAuthenticator)

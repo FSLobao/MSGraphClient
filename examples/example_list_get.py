@@ -9,8 +9,8 @@ import pandas as pd
 from dotenv import load_dotenv
 from requests import HTTPError
 
-from msgraphtest.auth import GraphClient
-from msgraphtest.lists import GraphList
+from python.auth import GraphClient
+from python.lists import GraphList
 
 load_dotenv()
 

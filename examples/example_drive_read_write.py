@@ -13,8 +13,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from msgraphtest.auth import GraphClient
-from msgraphtest.drive import GraphDrive
+from python.auth import GraphClient
+from python.drive import GraphDrive
 
 # ── Configuration ───────────────────────────────────────────────────────────
 # Set DRIVE_ITEM_ID in .env with a real drive item ID for a text file
@@ -40,7 +40,7 @@ def main() -> None:
     print("\n--- Original content ---")
     print(original)
 
-    new_content = original + "\n[Appended by msgraphtest example]\n"
+    new_content = original + "\n[Appended by python example]\n"
     print("\nWriting updated content...")
     result = drive.write_file_content(ITEM_ID, new_content)
     print(f"Update successful. Item ID: {result.get('id')}")

@@ -43,6 +43,7 @@ Para configuração com credenciais do cliente (sem login de usuário), veja [se
 3. **Tipos de conta suportados**: selecione **Contas neste diretório organizacional apenas**.
 4. Em **URI de Redirecionamento**, selecione o tipo **Aplicativos móveis e de desktop** (não "Web") e informe `http://localhost`.
    > ⚠️ O tipo "Web" causa o erro `AADSTS900971` em runtime. O tipo correto para clientes públicos locais é **Aplicativos móveis e de desktop**.
+   > ⚠️ Se `http://localhost` já estiver registrado como plataforma "Web" (de uma configuração anterior), **remova-o de lá antes de adicioná-lo como "Aplicativos móveis e de desktop"**. Ter o mesmo URI registrado em duas plataformas simultaneamente faz o Azure AD usar a plataforma errada e retornar `AADSTS7000218`.
 5. Clique em **Registrar** e anote:
    - **ID do Aplicativo (cliente)** → `AZURE_CLIENT_ID`
    - **ID do Diretório (tenant)** → `AZURE_TENANT_ID`
@@ -171,3 +172,54 @@ uv run examples/example_drive_list.py
 uv run examples/example_list_get.py
 uv run notebooks/graph_auth_site_attributes.ipynb
 ```
+
+---
+
+## Replicar esta configuração para outros aplicativos
+
+Para criar um segundo app com a mesma configuração (mesmas permissões, mesmo tipo de URI, mesmo fluxo público), use o **Manifest JSON** — sem precisar repetir cada passo manualmente.
+
+> 🔧 **Equipe de desenvolvimento** executa as etapas A–C. 🔑 **Administrador Entra** executa D. 🛡️ **Administrador SP** executa E.
+
+**A — Exportar o manifest do app existente**
+1. Abra o registro do app original no portal do Azure.
+2. Clique em **Manifest** no menu lateral.
+3. Clique em **Download** e salve o arquivo JSON.
+
+**B — Criar o novo registro de aplicativo**
+1. **Registros de app** → **Novo registro**.
+2. Informe apenas o **Nome** do novo app. Deixe os demais campos em branco por enquanto.
+3. Clique em **Registrar** e anote o novo `AZURE_CLIENT_ID`.
+
+**C — Importar o manifest no novo app**
+1. Abra o novo registro → **Manifest** → **Upload**.
+2. Selecione o arquivo JSON exportado no passo A.
+3. O portal importará permissões, URIs de redirecionamento e configurações avançadas (incluindo `allowPublicClient: true`).
+   > ℹ️ O `appId` e o `displayName` no arquivo exportado são ignorados na importação — o Azure AD usa o `appId` gerado no registro e o nome informado no passo B.
+
+> ℹ️ **Segredo de cliente não é necessário** para apps delegados (cliente público). Não é copiado pelo manifest e não precisa ser criado.
+
+**D — Conceder consentimento de administrador** *(obrigatório — não é copiado pelo manifest)*
+
+O consentimento é vinculado ao tenant e ao `appId` específico. Deve ser concedido individualmente para cada novo app:
+- **Portal**: Registro do app → **Permissões de API** → **Conceder consentimento de administrador para \<tenant\>**.
+- **URL direta** (substitua os valores): `https://login.microsoftonline.com/<AZURE_TENANT_ID>/adminconsent?client_id=<NOVO_AZURE_CLIENT_ID>`
+
+**E — Inscrever o site para o novo app** *(obrigatório — não é copiado pelo manifest)*
+
+A inscrição de site é uma permissão no nível do SharePoint, independente do Azure AD. Deve ser repetida para cada novo app:
+```
+POST https://graph.microsoft.com/v1.0/sites/<SHAREPOINT_SITE_ID>/permissions
+```
+Corpo: substitua `<AZURE_CLIENT_ID>` pelo ID do novo app (veja Etapa 4 deste guia para o corpo completo).
+
+**Resumo do que é e não é copiado pelo manifest:**
+
+| Configuração | Copiado pelo manifest? |
+|---|:---:|
+| URI de redirecionamento (`http://localhost`, plataforma Mobile/Desktop) | ✅ |
+| Permissões de API (`Sites.Selected` delegado) | ✅ |
+| Permitir fluxos de cliente público | ✅ |
+| Segredo de cliente | ❌ (não aplicável — app público) |
+| Consentimento de administrador | ❌ (deve ser concedido por app) |
+| Inscrição de site no SharePoint | ❌ (deve ser repetida por app) |

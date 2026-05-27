@@ -3,8 +3,9 @@
 from unittest.mock import MagicMock
 
 import pytest
+import requests
 
-import msgraphtest.lists as lists_mod
+import python.lists as lists_mod
 
 
 @pytest.fixture()
@@ -319,6 +320,82 @@ def test_get_list_views_returns_value(env: None) -> None:
 
     assert result == views
     assert mock_client.get.call_count == 2
+
+
+def test_get_list_views_fallback_returns_plain_array(env: None) -> None:
+    """Test that get_list_views fallback handles views returned as a plain array.
+
+    Graph API commonly returns expanded collections as plain arrays (not
+    wrapped in {"value": [...]}) when using $expand=views. This was the root
+    cause of views not being returned when the /views endpoint was unavailable.
+    """
+    views = [
+        {"id": "view-1", "name": "All Items"},
+        {"id": "view-2", "name": "Active Only"},
+    ]
+    mock_client = MagicMock()
+    mock_client.get.side_effect = [
+        # _get_list_summary
+        {
+            "id": "list-abc",
+            "name": "MonitorRNI",
+            "displayName": "Monitor RNI",
+            "webUrl": "https://contoso.sharepoint.com/sites/site/lists/monitorrni",
+        },
+        # /views endpoint raises HTTPError → triggers fallback
+        requests.HTTPError("403 Forbidden"),
+        # $expand=views returns views as a plain array (OData expanded collection)
+        {"id": "list-abc", "name": "MonitorRNI", "views": views},
+    ]
+
+    list_client = lists_mod.GraphList(client=mock_client)
+    result = list_client.get_list_views()
+
+    assert result == views
+
+
+def test_get_list_views_fallback_returns_wrapped_value(env: None) -> None:
+    """Test that get_list_views fallback also handles views wrapped in {"value": [...]}."""
+    views = [
+        {"id": "view-1", "name": "All Items"},
+        {"id": "view-2", "name": "Active Only"},
+    ]
+    mock_client = MagicMock()
+    mock_client.get.side_effect = [
+        {
+            "id": "list-abc",
+            "name": "MonitorRNI",
+            "displayName": "Monitor RNI",
+            "webUrl": "https://contoso.sharepoint.com/sites/site/lists/monitorrni",
+        },
+        requests.HTTPError("403 Forbidden"),
+        {"id": "list-abc", "name": "MonitorRNI", "views": {"value": views}},
+    ]
+
+    list_client = lists_mod.GraphList(client=mock_client)
+    result = list_client.get_list_views()
+
+    assert result == views
+
+
+def test_get_list_views_returns_empty_when_both_endpoints_fail(env: None) -> None:
+    """Test that get_list_views returns [] when both the /views and $expand endpoints fail."""
+    mock_client = MagicMock()
+    mock_client.get.side_effect = [
+        {
+            "id": "list-abc",
+            "name": "MonitorRNI",
+            "displayName": "Monitor RNI",
+            "webUrl": "https://contoso.sharepoint.com/sites/site/lists/monitorrni",
+        },
+        requests.HTTPError("403 Forbidden"),
+        requests.HTTPError("403 Forbidden"),
+    ]
+
+    list_client = lists_mod.GraphList(client=mock_client)
+    result = list_client.get_list_views()
+
+    assert result == []
 
 
 def test_get_list_view_columns_returns_value(env: None) -> None:

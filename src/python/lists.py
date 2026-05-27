@@ -20,7 +20,7 @@ import os
 import requests
 from dotenv import load_dotenv
 
-from msgraphtest.auth import GraphClient
+from python.auth import GraphClient
 
 load_dotenv()
 
@@ -135,6 +135,10 @@ class GraphList:
                     f"/sites/{self.site_id}/lists/{self.list_id}?$expand=views"
                 )
                 views_block = data.get("views", {})
+                # Graph returns expanded collections as plain arrays (OData spec),
+                # but some responses wrap them in {"value": [...]}.
+                if isinstance(views_block, list):
+                    return views_block
                 if isinstance(views_block, dict):
                     return views_block.get("value", [])
                 return []

@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 import pytest
 import requests
 
-from msgraphtest.auth import (
+from python.auth import (
     GraphClient,
     GraphAuthorizationError,
 )

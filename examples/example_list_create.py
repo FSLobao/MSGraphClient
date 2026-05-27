@@ -11,13 +11,13 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from msgraphtest.auth import GraphClient
-from msgraphtest.lists import GraphList
+from python.auth import GraphClient
+from python.lists import GraphList
 
 # ── Configuration ───────────────────────────────────────────────────────────
 # Adjust these fields to match your list's columns
 ITEM_FIELDS: dict = {
-    "Title": "Test item created by msgraphtest",
+    "Title": "Test item created by python",
 }
 # ────────────────────────────────────────────────────────────────────────────
 

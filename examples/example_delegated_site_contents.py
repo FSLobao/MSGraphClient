@@ -12,7 +12,7 @@ Expected .env settings:
 
 from dotenv import load_dotenv
 
-from msgraphtest.auth import GraphClient, GraphAuthorizationError
+from python.auth import GraphClient, GraphAuthorizationError
 
 load_dotenv()
 

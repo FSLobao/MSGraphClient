@@ -19,7 +19,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from msgraphtest.auth import GraphClient
+from python.auth import GraphClient
 
 load_dotenv()
 

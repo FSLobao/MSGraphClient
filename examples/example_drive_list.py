@@ -6,8 +6,8 @@ Usage:
 """
 
 from dotenv import load_dotenv
-from msgraphtest.auth import GraphClient
-from msgraphtest.drive import GraphDrive
+from python.auth import GraphClient
+from python.drive import GraphDrive
 
 load_dotenv()
 

@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from msgraphtest.auth import GraphAuthenticator
+from python.auth import GraphAuthenticator
 
 
 @pytest.fixture()

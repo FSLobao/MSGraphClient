@@ -4,7 +4,7 @@ import pytest
 import msal
 from unittest.mock import MagicMock, patch
 
-import msgraphtest.auth as auth_mod
+import python.auth as auth_mod
 
 
 @pytest.fixture(autouse=True)

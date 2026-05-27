@@ -17,7 +17,7 @@ import msal
 import requests
 from dotenv import load_dotenv
 
-from msgraphtest.client import GraphAuthorizationError, GraphClient  # noqa: F401
+from python.client import GraphAuthorizationError, GraphClient  # noqa: F401
 
 load_dotenv()
 
@@ -34,7 +34,7 @@ DELEGATED_GRAPH_SCOPES = [
 ]
 
 # Public API exported by this module.
-# GraphAuthorizationError and GraphClient are re-exported from msgraphtest.client.
+# GraphAuthorizationError and GraphClient are re-exported from python.client.
 __all__ = ["GraphAuthorizationError", "GraphClient", "GraphAuthenticator"]
 
 

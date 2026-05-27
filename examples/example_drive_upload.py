@@ -9,8 +9,8 @@ from pathlib import Path
 from dotenv import load_dotenv
 from requests import HTTPError
 
-from msgraphtest.auth import GraphClient
-from msgraphtest.drive import GraphDrive
+from python.auth import GraphClient
+from python.drive import GraphDrive
 
 load_dotenv()
 
@@ -34,7 +34,7 @@ def main() -> int:
     if not LOCAL_FILE.exists():
         # Create a sample file for demonstration
         LOCAL_FILE.parent.mkdir(parents=True, exist_ok=True)
-        LOCAL_FILE.write_text("This is a sample file uploaded by msgraphtest.\n")
+        LOCAL_FILE.write_text("This is a sample file uploaded by python.\n")
         print(f"Created sample file: {LOCAL_FILE}")
 
     print(f"Uploading {LOCAL_FILE.name} to drive folder '{REMOTE_FOLDER}'...")

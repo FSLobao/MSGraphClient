@@ -128,6 +128,57 @@ Formato esperado: `contoso.sharepoint.com,xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx,y
 
 ---
 
+## Replicar esta configuração para outros aplicativos
+
+Para criar um segundo app com a mesma configuração (mesmas permissões, sem URI de redirecionamento, fluxo de credenciais do cliente), use o **Manifest JSON** — sem precisar repetir cada passo manualmente.
+
+> 🔧 **Equipe de desenvolvimento** executa as etapas A–C. 🔑 **Administrador Entra** executa D. 🛡️ **Administrador SP** executa E.
+
+**A — Exportar o manifest do app existente**
+1. Abra o registro do app original no portal do Azure.
+2. Clique em **Manifest** no menu lateral.
+3. Clique em **Download** e salve o arquivo JSON.
+
+**B — Criar o novo registro de aplicativo**
+1. **Registros de app** → **Novo registro**.
+2. Informe apenas o **Nome** do novo app. Deixe os demais campos em branco por enquanto.
+3. Clique em **Registrar** e anote o novo `AZURE_CLIENT_ID`.
+
+**C — Importar o manifest e criar novo segredo**
+1. Abra o novo registro → **Manifest** → **Upload**.
+2. Selecione o arquivo JSON exportado no passo A.
+3. O portal importará permissões e configurações. O `appId` e `displayName` do arquivo exportado são ignorados — o Azure AD usa os do novo registro.
+4. Vá para **Certificados e segredos** → **Novo segredo do cliente**.
+5. Copie imediatamente o valor gerado → novo `AZURE_CLIENT_SECRET`.
+   > ⚠️ Segredos **não são exportados** pelo manifest e devem ser criados individualmente para cada app.
+
+**D — Conceder consentimento de administrador** *(obrigatório — não é copiado pelo manifest)*
+
+O consentimento é vinculado ao `appId` específico. Deve ser concedido individualmente para cada novo app:
+- **Portal**: Registro do app → **Permissões de API** → **Conceder consentimento de administrador para \<tenant\>**.
+
+**E — Inscrever o site para o novo app** *(obrigatório — não é copiado pelo manifest)*
+
+A inscrição de site é uma permissão no nível do SharePoint, independente do Azure AD. Deve ser repetida para cada novo app:
+```
+POST https://graph.microsoft.com/v1.0/sites/<SHAREPOINT_SITE_ID>/permissions
+```
+Corpo: substitua `<AZURE_CLIENT_ID>` pelo ID do novo app (veja a Etapa 4 deste guia para o corpo completo).
+
+**Resumo do que é e não é copiado pelo manifest:**
+
+| Configuração | Copiado pelo manifest? |
+|---|:---:|
+| Permissões de API (`Sites.Selected` de aplicativo) | ✅ |
+| Tipos de conta suportados | ✅ |
+| Segredo de cliente | ❌ (deve ser criado por app) |
+| Consentimento de administrador | ❌ (deve ser concedido por app) |
+| Inscrição de site no SharePoint | ❌ (deve ser repetida por app) |
+
+> Para criar **múltiplos apps em lote**, veja [bulk_create_apps.md](bulk_create_apps.md) — automatiza as etapas C, D e E de uma só vez via PowerShell ou Python.
+
+---
+
 ## Etapa 5 — Descobrir o ID da drive e ID da lista
 
 > 🔧 **Equipe de desenvolvimento**

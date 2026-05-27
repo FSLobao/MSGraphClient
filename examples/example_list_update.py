@@ -12,14 +12,14 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from msgraphtest.auth import GraphClient
-from msgraphtest.lists import GraphList
+from python.auth import GraphClient
+from python.lists import GraphList
 
 # ── Configuration ───────────────────────────────────────────────────────────
 # Set to the ID of the item to update, or leave empty to update the first item
 ITEM_ID: str = ""
 UPDATE_FIELDS: dict = {
-    "Title": "Updated by msgraphtest",
+    "Title": "Updated by python",
 }
 # ────────────────────────────────────────────────────────────────────────────
 
