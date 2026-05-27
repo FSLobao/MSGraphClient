@@ -7,6 +7,12 @@ from unittest.mock import MagicMock, patch
 import msgraphtest.auth as auth_mod
 
 
+@pytest.fixture(autouse=True)
+def _default_graph_auth_mode(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Isolate tests from local .env by pinning default auth mode."""
+    monkeypatch.setenv("GRAPH_AUTH_MODE", "client_credentials")
+
+
 def test_graph_client_missing_env(monkeypatch: pytest.MonkeyPatch) -> None:
     """Test that GraphClient raises EnvironmentError when vars are missing."""
     monkeypatch.delenv("AZURE_TENANT_ID", raising=False)
@@ -216,3 +222,153 @@ def test_graph_authenticator_delegated_device_code_mode(
     assert auth.token == "delegated-device-token"
     mock_app.initiate_device_flow.assert_called_once()
     mock_app.acquire_token_by_device_flow.assert_called_once()
+
+
+def test_graph_authenticator_delegated_interactive_timeout(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Delegated interactive mode should surface timeout errors from MSAL."""
+    monkeypatch.setenv("AZURE_TENANT_ID", "tenant-id")
+    monkeypatch.setenv("AZURE_CLIENT_ID", "client-id")
+    monkeypatch.setenv("GRAPH_DELEGATED_LOGIN_MODE", "interactive")
+    monkeypatch.delenv("AZURE_CLIENT_SECRET", raising=False)
+    monkeypatch.delenv("SHAREPOINT_SITE_ID", raising=False)
+
+    mock_app = MagicMock()
+    mock_app.acquire_token_interactive.return_value = {
+        "error": "timeout",
+        "error_description": "Timed out waiting for browser login",
+    }
+
+    with patch.object(msal, "PublicClientApplication", return_value=mock_app):
+        with pytest.raises(
+            RuntimeError, match="Failed to acquire delegated token: timeout"
+        ):
+            auth_mod.GraphAuthenticator(create_client=False, auth_mode="delegated")
+
+
+def test_graph_authenticator_delegated_interactive_cancellation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Delegated interactive mode should surface user cancellation errors."""
+    monkeypatch.setenv("AZURE_TENANT_ID", "tenant-id")
+    monkeypatch.setenv("AZURE_CLIENT_ID", "client-id")
+    monkeypatch.setenv("GRAPH_DELEGATED_LOGIN_MODE", "interactive")
+    monkeypatch.delenv("AZURE_CLIENT_SECRET", raising=False)
+    monkeypatch.delenv("SHAREPOINT_SITE_ID", raising=False)
+
+    mock_app = MagicMock()
+    mock_app.acquire_token_interactive.return_value = {
+        "error": "access_denied",
+        "error_description": "User canceled the authentication flow",
+    }
+
+    with patch.object(msal, "PublicClientApplication", return_value=mock_app):
+        with pytest.raises(
+            RuntimeError, match="Failed to acquire delegated token: access_denied"
+        ):
+            auth_mod.GraphAuthenticator(create_client=False, auth_mode="delegated")
+
+
+def test_graph_authenticator_delegated_interactive_invalid_scope(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Delegated interactive mode should surface invalid scope errors."""
+    monkeypatch.setenv("AZURE_TENANT_ID", "tenant-id")
+    monkeypatch.setenv("AZURE_CLIENT_ID", "client-id")
+    monkeypatch.setenv("GRAPH_DELEGATED_LOGIN_MODE", "interactive")
+    monkeypatch.setenv("GRAPH_DELEGATED_SCOPES", "invalid.scope")
+    monkeypatch.delenv("AZURE_CLIENT_SECRET", raising=False)
+    monkeypatch.delenv("SHAREPOINT_SITE_ID", raising=False)
+
+    mock_app = MagicMock()
+    mock_app.acquire_token_interactive.return_value = {
+        "error": "invalid_scope",
+        "error_description": "The provided scope is not valid",
+    }
+
+    with patch.object(msal, "PublicClientApplication", return_value=mock_app):
+        with pytest.raises(
+            RuntimeError, match="Failed to acquire delegated token: invalid_scope"
+        ):
+            auth_mod.GraphAuthenticator(create_client=False, auth_mode="delegated")
+
+
+def test_graph_authenticator_delegated_device_code_cancellation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Delegated device_code mode should surface user cancellation errors."""
+    monkeypatch.setenv("AZURE_TENANT_ID", "tenant-id")
+    monkeypatch.setenv("AZURE_CLIENT_ID", "client-id")
+    monkeypatch.setenv("GRAPH_DELEGATED_LOGIN_MODE", "device_code")
+    monkeypatch.delenv("AZURE_CLIENT_SECRET", raising=False)
+    monkeypatch.delenv("SHAREPOINT_SITE_ID", raising=False)
+
+    mock_app = MagicMock()
+    mock_app.initiate_device_flow.return_value = {
+        "user_code": "ABCDEF",
+        "message": "Open browser and enter code",
+    }
+    mock_app.acquire_token_by_device_flow.return_value = {
+        "error": "authorization_declined",
+        "error_description": "User declined authentication",
+    }
+
+    with patch.object(msal, "PublicClientApplication", return_value=mock_app):
+        with pytest.raises(
+            RuntimeError,
+            match="Failed to acquire delegated token: authorization_declined",
+        ):
+            auth_mod.GraphAuthenticator(create_client=False, auth_mode="delegated")
+
+
+def test_graph_authenticator_delegated_device_code_timeout(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Delegated device_code mode should surface polling timeout errors."""
+    monkeypatch.setenv("AZURE_TENANT_ID", "tenant-id")
+    monkeypatch.setenv("AZURE_CLIENT_ID", "client-id")
+    monkeypatch.setenv("GRAPH_DELEGATED_LOGIN_MODE", "device_code")
+    monkeypatch.delenv("AZURE_CLIENT_SECRET", raising=False)
+    monkeypatch.delenv("SHAREPOINT_SITE_ID", raising=False)
+
+    mock_app = MagicMock()
+    mock_app.initiate_device_flow.return_value = {
+        "user_code": "ABCDEF",
+        "message": "Open browser and enter code",
+    }
+    mock_app.acquire_token_by_device_flow.return_value = {
+        "error": "authorization_pending_timeout",
+        "error_description": "Timed out waiting for user to complete auth",
+    }
+
+    with patch.object(msal, "PublicClientApplication", return_value=mock_app):
+        with pytest.raises(
+            RuntimeError,
+            match="Failed to acquire delegated token: authorization_pending_timeout",
+        ):
+            auth_mod.GraphAuthenticator(create_client=False, auth_mode="delegated")
+
+
+def test_graph_authenticator_delegated_device_code_invalid_scope(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Delegated device_code mode should surface invalid scope at flow start."""
+    monkeypatch.setenv("AZURE_TENANT_ID", "tenant-id")
+    monkeypatch.setenv("AZURE_CLIENT_ID", "client-id")
+    monkeypatch.setenv("GRAPH_DELEGATED_LOGIN_MODE", "device_code")
+    monkeypatch.setenv("GRAPH_DELEGATED_SCOPES", "bad.scope")
+    monkeypatch.delenv("AZURE_CLIENT_SECRET", raising=False)
+    monkeypatch.delenv("SHAREPOINT_SITE_ID", raising=False)
+
+    mock_app = MagicMock()
+    mock_app.initiate_device_flow.return_value = {
+        "error": "invalid_scope",
+        "error_description": "The provided scope is not valid",
+    }
+
+    with patch.object(msal, "PublicClientApplication", return_value=mock_app):
+        with pytest.raises(
+            RuntimeError, match="Failed to acquire delegated token: invalid_scope"
+        ):
+            auth_mod.GraphAuthenticator(create_client=False, auth_mode="delegated")
