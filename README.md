@@ -300,12 +300,18 @@ Operações de listas do SharePoint:
 
 | Método | Descrição |
 |---|---|
-| `GraphList.get_list_columns(names)` | Recupera colunas da lista, opcionalmente filtradas por nome |
-| `GraphList.get_list_views()` | Lista as views da lista |
-| `GraphList.get_list_view_columns(view_id)` | Lista as colunas visíveis em uma view |
-| `GraphList.get_list_items(select, fields_only=False, include_title=False, include_item_id=False)` | Recupera itens da lista com seleção opcional de campos |
-| `GraphList.create_list_item(fields)` | Cria um novo item |
-| `GraphList.update_list_item(item_id, fields)` | Atualiza campos de um item existente |
+| `GraphList.get_columns(names=None)` | Recupera colunas da lista, opcionalmente filtradas por nome |
+| `GraphList.get_views()` | Lista as views da lista |
+| `GraphList.get_view_columns(view_id)` | Lista as colunas visíveis em uma view |
+| `GraphList.get_schema()` | Retorna schema de colunas editáveis (display_name, tipo e regras) |
+| `GraphList.get_field_types()` | Retorna mapeamento `displayName -> type` |
+| `GraphList.get_items(select=None, include_id=True)` | Recupera itens com chaves `displayName` e paginação automática |
+| `GraphList.get_items_dataframe(select=None, include_id=True)` | Recupera itens diretamente em DataFrame pandas |
+| `GraphList.get_item_template(include_optional=True)` | Gera template de item com colunas editáveis |
+| `GraphList.validate_item(data)` | Valida tipos e regras antes de persistir |
+| `GraphList.save_item(data)` | Cria ou atualiza item conforme presença de `_id` |
+| `GraphList.save_items(items)` | Persiste múltiplos itens, interrompendo no primeiro erro |
+| `GraphList.save_dataframe(dataframe)` | Persiste linhas de DataFrame no formato da API nova |
 
 ### `auth.py`
 `GraphAuthenticator` concentra a descoberta do site:

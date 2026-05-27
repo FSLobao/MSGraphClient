@@ -32,10 +32,10 @@ def main() -> None:
     list_client = GraphList(client=client)
 
     print(f"Creating new list item with fields: {ITEM_FIELDS}")
-    result = list_client.create_list_item(ITEM_FIELDS)
+    result = list_client.save_item(ITEM_FIELDS)
     print(f"\nItem created successfully!")
-    print(f"  ID     : {result.get('id')}")
-    print(f"  Fields : {result.get('fields')}")
+    print(f"  ID     : {result.get('_id')}")
+    print(f"  Fields : {result}")
 
 
 if __name__ == "__main__":

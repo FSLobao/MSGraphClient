@@ -20,7 +20,7 @@ Atualize-o sempre que a superfície pública ou a estrutura do projeto mudar.
 - `GraphList` deriva `site_id` do `client.authenticator` quando possível.
 - Não existem mais wrappers de compatibilidade em nível de módulo para drive/list/site.
 - As consultas de listas usam seleção no momento da requisição, evitando filtragem tardia desnecessária.
-- `get_list_views()` retorna `[]` quando a lista não expõe views.
+- `get_views()` retorna `[]` quando a lista não expõe views.
 
 No fluxo `delegated`, o acesso efetivo em runtime continua sendo a interseção entre a concessão do aplicativo no site e as permissões do usuário autenticado nesse site.
 
@@ -84,12 +84,16 @@ MSGraphClient/
 - `GraphDrive.write_file_content(item_id, content)`
 
 ### `src/python/lists.py`
-- `GraphList.get_list_views()` com fallback seguro para listas sem views
-- `GraphList.get_list_view_columns(view_id)`
-- `GraphList.get_list_columns(names=None)` com filtro de metadados via Graph
-- `GraphList.get_list_items(select=None, include_title=False, fields_only=False, include_item_id=False)`
-- `GraphList.create_list_item(fields)`
-- `GraphList.update_list_item(item_id, fields)`
+- `GraphList.get_views()` com fallback seguro para listas sem views
+- `GraphList.get_view_columns(view_id)`
+- `GraphList.get_columns(names=None)` com filtro de metadados via Graph
+- `GraphList.get_schema()` e `GraphList.get_field_types()`
+- `GraphList.get_items(select=None, include_id=True)`
+- `GraphList.get_items_dataframe(select=None, include_id=True)`
+- `GraphList.get_item_template(include_optional=True)`
+- `GraphList.validate_item(data)`
+- `GraphList.save_item(data)` e `GraphList.save_items(items)`
+- `GraphList.save_dataframe(dataframe)`
 
 ---
 

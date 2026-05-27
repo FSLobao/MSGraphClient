@@ -5,7 +5,6 @@ Usage:
     uv run examples/example_list_get.py
 """
 
-import pandas as pd
 from dotenv import load_dotenv
 from requests import HTTPError
 
@@ -13,15 +12,6 @@ from python.auth import GraphClient
 from python.lists import GraphList
 
 load_dotenv()
-
-
-def _build_column_rename(columns: list[dict]) -> dict[str, str]:
-    """Return a mapping of internal column names to display names."""
-    return {
-        col["name"]: col["displayName"]
-        for col in columns
-        if col.get("name") and col.get("displayName")
-    }
 
 
 def _prompt_view_selection(views: list[dict]) -> dict | None:
@@ -67,7 +57,7 @@ def main() -> None:
             f"Usando colunas configuradas via SHAREPOINT_VIEW_COLUMNS: {internal_names}\n"
         )
         try:
-            filtered_columns = list_client.get_list_columns(
+            filtered_columns = list_client.get_columns(
                 names=["Title", *internal_names]
             )
         except HTTPError as exc:
@@ -86,12 +76,11 @@ def main() -> None:
             {"name": n, "displayName": display_name_map.get(n, n)}
             for n in ["Title", *internal_names]
         ]
-        rename_map = _build_column_rename(columns)
     else:
         # ── Options A/B: interactive view selection via API ───────────────────
         print("Buscando views disponíveis...")
         try:
-            views = list_client.get_list_views()
+            views = list_client.get_views()
         except HTTPError as exc:
             print(
                 f"  Aviso: não foi possível obter as views — {GraphClient.format_http_error(exc)}"
@@ -112,34 +101,32 @@ def main() -> None:
             view_name = selected_view.get("name", selected_view["id"])
             print(f"\nBuscando colunas da view '{view_name}'...")
             try:
-                columns = list_client.get_list_view_columns(selected_view["id"])
+                columns = list_client.get_view_columns(selected_view["id"])
             except HTTPError as exc:
                 print(
                     f"  Aviso: não foi possível obter as colunas da view — {GraphClient.format_http_error(exc)}"
                 )
                 print("  Usando todas as colunas disponíveis...\n")
-                columns = list_client.get_list_columns()
+                columns = list_client.get_columns()
         else:
             print("\nBuscando todas as definições de coluna...")
-            columns = list_client.get_list_columns()
-
-        rename_map = _build_column_rename(columns)
+            columns = list_client.get_columns()
 
     print("Buscando itens da lista do SharePoint...\n")
-    selected_fields = [
-        col["name"] for col in columns if col.get("name") and col["name"] != "Title"
+    selected_display_names = [
+        col["displayName"]
+        for col in columns
+        if col.get("displayName") and col["displayName"] != "Title"
     ]
-    items = list_client.get_list_items(
-        select=selected_fields,
-        include_title=True,
-        fields_only=True,
-        include_item_id=True,
+    df_list_content = list_client.get_items_dataframe(
+        select=selected_display_names,
+        include_id=True,
     )
-    if not items:
+    if df_list_content.empty:
         print("(nenhum item encontrado)")
         return
 
-    df_list_content = pd.DataFrame(items).rename(columns=rename_map).copy()
+    df_list_content = df_list_content.rename(columns={"_id": "id"}).copy()
 
     print("Conteudo da Lista")
     print(df_list_content.head())
@@ -148,3 +135,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

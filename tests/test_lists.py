@@ -1,11 +1,62 @@
 """Tests for lists.py"""
 
+import datetime
+from typing import Any, cast
 from unittest.mock import MagicMock
 
+import pandas as pd
 import pytest
 import requests
 
 import python.lists as lists_mod
+
+
+def _sample_columns() -> list[dict]:
+    """Return a representative set of Graph list column definitions."""
+    return [
+        {
+            "name": "Title",
+            "displayName": "Title",
+            "required": True,
+            "text": {},
+        },
+        {
+            "name": "field_1",
+            "displayName": "Customer Name",
+            "required": False,
+            "text": {},
+        },
+        {
+            "name": "field_status",
+            "displayName": "Status",
+            "required": False,
+            "choice": {"choices": ["Active", "Closed"]},
+        },
+        {
+            "name": "field_date",
+            "displayName": "Start Date",
+            "required": False,
+            "dateTime": {},
+        },
+        {
+            "name": "field_lookup",
+            "displayName": "Parent Item",
+            "required": False,
+            "lookup": {},
+        },
+        {
+            "name": "Author",
+            "displayName": "Created By",
+            "readOnly": True,
+            "personOrGroup": {},
+        },
+        {
+            "name": "ContentType",
+            "displayName": "Content Type",
+            "hidden": True,
+            "text": {},
+        },
+    ]
 
 
 @pytest.fixture()
@@ -28,6 +79,7 @@ def _mock_client(return_value: dict | None = None) -> MagicMock:
             "displayName": "Monitor RNI",
             "webUrl": "https://contoso.sharepoint.com/sites/site/lists/monitorrni",
         },
+        {"value": _sample_columns()},
         return_value or {},
     ]
     client.post.return_value = {"id": "42", "fields": {"Title": "New Item"}}
@@ -35,140 +87,18 @@ def _mock_client(return_value: dict | None = None) -> MagicMock:
     return client
 
 
-def test_get_list_items_returns_value(env: None) -> None:
-    """Test that get_list_items returns the value array from API response."""
-    items = [
-        {"id": "1", "fields": {"Title": "Item A"}},
-        {"id": "2", "fields": {"Title": "Item B"}},
-    ]
-    mock_client = _mock_client(return_value={"value": items})
-
-    list_client = lists_mod.GraphList(client=mock_client)
-    result = list_client.get_list_items()
-
-    assert result == items
-    assert mock_client.get.call_count == 2
-
-
-def test_get_list_items_without_select_requests_all_fields(env: None) -> None:
-    """Without select, get_list_items should not apply fields(select=...) filtering."""
-    items = [{"id": "1", "fields": {"Title": "Item A", "field_1": "Alpha"}}]
-    mock_client = _mock_client(return_value={"value": items})
-
-    list_client = lists_mod.GraphList(client=mock_client)
-    result = list_client.get_list_items(include_title=True, fields_only=False)
-
-    assert result == items
-    call_path = mock_client.get.call_args[0][0]
-    assert "items?expand=fields" in call_path
-    assert "fields(select=" not in call_path
-
-
-def test_get_list_items_selects_specific_fields(env: None) -> None:
-    """Test that get_list_items requests specific fields via expand=fields(select=...)."""
-    items = [{"id": "1", "fields": {"Title": "Item A", "field_1": "Alpha"}}]
-    mock_client = _mock_client(return_value={"value": items})
-
-    list_client = lists_mod.GraphList(client=mock_client)
-    result = list_client.get_list_items(select=["Title", "field_1"])
-
-    assert result == items
-    call_path = mock_client.get.call_args[0][0]
-    assert "items?expand=fields(select=Title,field_1)" in call_path
-
-
-def test_get_list_items_fields_only_returns_business_fields(env: None) -> None:
-    """Test that get_list_items can return only the fields payload for each item."""
-    items = [
-        {"id": "1", "fields": {"Title": "Item A", "field_1": "Alpha"}},
-        {"id": "2", "fields": {"Title": "Item B", "field_1": "Beta"}},
-    ]
-    mock_client = _mock_client(return_value={"value": items})
-
-    list_client = lists_mod.GraphList(client=mock_client)
-    result = list_client.get_list_items(select=["Title", "field_1"], fields_only=True)
-
-    assert result == [
-        {"Title": "Item A", "field_1": "Alpha"},
-        {"Title": "Item B", "field_1": "Beta"},
-    ]
-
-
-def test_get_list_items_fields_only_without_select_filters_field_keys(
-    env: None,
-) -> None:
-    """Without select, fields_only should keep only field_* keys and optional Title."""
-    items = [
-        {
-            "id": "1",
-            "fields": {
-                "Title": "Item A",
-                "field_1": "Alpha",
-                "Author": "User A",
-                "ContentType": "Item",
-            },
-        }
-    ]
-
-    mock_client_without_title = _mock_client(return_value={"value": items})
-    list_client_without_title = lists_mod.GraphList(client=mock_client_without_title)
-    result_without_title = list_client_without_title.get_list_items(fields_only=True)
-
-    mock_client_with_title = _mock_client(return_value={"value": items})
-    list_client_with_title = lists_mod.GraphList(client=mock_client_with_title)
-    result_with_title = list_client_with_title.get_list_items(
-        fields_only=True,
-        include_title=True,
-    )
-
-    assert result_without_title == [{"field_1": "Alpha"}]
-    assert result_with_title == [{"field_1": "Alpha", "Title": "Item A"}]
-
-
-def test_get_list_items_can_include_title_without_fetching_all_fields(
-    env: None,
-) -> None:
-    """Test that get_list_items can request Title plus explicit business fields."""
-    items = [{"id": "1", "fields": {"Title": "Item A", "field_1": "Alpha"}}]
-    mock_client = _mock_client(return_value={"value": items})
-
-    list_client = lists_mod.GraphList(client=mock_client)
-    result = list_client.get_list_items(
-        select=["field_1"],
-        include_title=True,
-        fields_only=True,
-    )
-
-    assert result == [{"Title": "Item A", "field_1": "Alpha"}]
-    call_path = mock_client.get.call_args[0][0]
-    assert "items?expand=fields(select=Title,field_1)" in call_path
-
-
-def test_get_list_items_fields_only_can_keep_item_id(env: None) -> None:
-    """Test that fields_only mode can preserve the Graph list item id."""
-    items = [{"id": "37", "fields": {"Title": "Item A", "field_1": "Alpha"}}]
-    mock_client = _mock_client(return_value={"value": items})
-
-    list_client = lists_mod.GraphList(client=mock_client)
-    result = list_client.get_list_items(
-        select=["field_1"],
-        include_title=True,
-        fields_only=True,
-        include_item_id=True,
-    )
-
-    assert result == [{"Title": "Item A", "field_1": "Alpha", "id": "37"}]
-
-
 def test_graph_list_initialization_loads_basic_metadata(env: None) -> None:
     """Test that GraphList validates access and stores basic list attributes."""
     mock_client = MagicMock()
-    mock_client.get.return_value = {
-        "id": "list-abc",
-        "name": "MonitorRNI",
-        "displayName": "Monitor RNI",
-        "webUrl": "https://contoso.sharepoint.com/sites/site/lists/monitorrni",
-    }
+    mock_client.get.side_effect = [
+        {
+            "id": "list-abc",
+            "name": "MonitorRNI",
+            "displayName": "Monitor RNI",
+            "webUrl": "https://contoso.sharepoint.com/sites/site/lists/monitorrni",
+        },
+        {"value": _sample_columns()},
+    ]
 
     lst = lists_mod.GraphList(client=mock_client)
 
@@ -187,12 +117,15 @@ def test_graph_list_initialization_with_explicit_arguments(
 
     mock_client = MagicMock()
     mock_client.authenticator = MagicMock(sharepoint_site_id="site-custom")
-    mock_client.get.return_value = {
-        "id": "list-custom",
-        "name": "CustomList",
-        "displayName": "Custom List",
-        "webUrl": "https://contoso.sharepoint.com/sites/custom/lists/customlist",
-    }
+    mock_client.get.side_effect = [
+        {
+            "id": "list-custom",
+            "name": "CustomList",
+            "displayName": "Custom List",
+            "webUrl": "https://contoso.sharepoint.com/sites/custom/lists/customlist",
+        },
+        {"value": _sample_columns()},
+    ]
 
     lst = lists_mod.GraphList(
         list_id="list-custom",
@@ -202,7 +135,7 @@ def test_graph_list_initialization_with_explicit_arguments(
     assert lst.site_id == "site-custom"
     assert lst.list_id == "list-custom"
     assert lst.list_graph_id == "list-custom"
-    mock_client.get.assert_called_once()
+    assert mock_client.get.call_count == 2
     assert "/sites/site-custom/lists/list-custom" in mock_client.get.call_args[0][0]
 
 
@@ -215,12 +148,15 @@ def test_graph_list_initialization_uses_site_id_from_client_authenticator(
 
     mock_client = MagicMock()
     mock_client.authenticator = MagicMock(sharepoint_site_id="site-from-client")
-    mock_client.get.return_value = {
-        "id": "list-client",
-        "name": "ClientList",
-        "displayName": "Client List",
-        "webUrl": "https://contoso.sharepoint.com/sites/client/lists/clientlist",
-    }
+    mock_client.get.side_effect = [
+        {
+            "id": "list-client",
+            "name": "ClientList",
+            "displayName": "Client List",
+            "webUrl": "https://contoso.sharepoint.com/sites/client/lists/clientlist",
+        },
+        {"value": _sample_columns()},
+    ]
 
     lst = lists_mod.GraphList(
         list_id="list-client",
@@ -229,13 +165,13 @@ def test_graph_list_initialization_uses_site_id_from_client_authenticator(
 
     assert lst.site_id == "site-from-client"
     assert lst.list_id == "list-client"
-    mock_client.get.assert_called_once()
+    assert mock_client.get.call_count == 2
     assert (
         "/sites/site-from-client/lists/list-client" in mock_client.get.call_args[0][0]
     )
 
 
-def test_get_list_items_missing_site_id(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_graph_list_missing_site_id(monkeypatch: pytest.MonkeyPatch) -> None:
     """Test that GraphList raises EnvironmentError when SHAREPOINT_SITE_ID is missing."""
     monkeypatch.delenv("SHAREPOINT_SITE_ID", raising=False)
 
@@ -243,7 +179,7 @@ def test_get_list_items_missing_site_id(monkeypatch: pytest.MonkeyPatch) -> None
         lists_mod.GraphList(client=MagicMock())
 
 
-def test_get_list_items_missing_list_id(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_graph_list_missing_list_id(monkeypatch: pytest.MonkeyPatch) -> None:
     """Test that GraphList raises EnvironmentError when SHAREPOINT_LIST_ID is missing."""
     monkeypatch.setenv("SHAREPOINT_SITE_ID", "site-xyz")
     monkeypatch.delenv("SHAREPOINT_LIST_ID", raising=False)
@@ -252,30 +188,8 @@ def test_get_list_items_missing_list_id(monkeypatch: pytest.MonkeyPatch) -> None
         lists_mod.GraphList(client=MagicMock())
 
 
-def test_create_list_item(env: None) -> None:
-    """Test that create_list_item sends field data and returns the created item."""
-    mock_client = _mock_client()
-    list_client = lists_mod.GraphList(client=mock_client)
-
-    result = list_client.create_list_item({"Title": "New Item", "Status": "Active"})
-
-    mock_client.post.assert_called_once()
-    assert result["id"] == "42"
-
-
-def test_update_list_item(env: None) -> None:
-    """Test that update_list_item sends updated fields to the Graph API."""
-    mock_client = _mock_client()
-    list_client = lists_mod.GraphList(client=mock_client)
-
-    result = list_client.update_list_item("42", {"Status": "Closed"})
-
-    mock_client.patch.assert_called_once()
-    assert result["Title"] == "Updated Item"
-
-
-def test_get_list_columns_returns_value(env: None) -> None:
-    """Test that get_list_columns returns the value array from the columns endpoint."""
+def test_get_columns_returns_value(env: None) -> None:
+    """Test that get_columns returns the value array from the columns endpoint."""
     columns = [
         {"name": "Title", "displayName": "Title"},
         {"name": "field_1", "displayName": "Customer Name"},
@@ -283,14 +197,14 @@ def test_get_list_columns_returns_value(env: None) -> None:
     mock_client = _mock_client(return_value={"value": columns})
 
     list_client = lists_mod.GraphList(client=mock_client)
-    result = list_client.get_list_columns()
+    result = list_client.get_columns()
 
     assert result == columns
-    assert mock_client.get.call_count == 2
+    assert mock_client.get.call_count == 3
 
 
-def test_get_list_columns_can_filter_by_names(env: None) -> None:
-    """Test that get_list_columns can request only selected column metadata."""
+def test_get_columns_can_filter_by_names(env: None) -> None:
+    """Test that get_columns can request only selected column metadata."""
     columns = [
         {"name": "Title", "displayName": "Título"},
         {"name": "field_1", "displayName": "Customer Name"},
@@ -298,7 +212,7 @@ def test_get_list_columns_can_filter_by_names(env: None) -> None:
     mock_client = _mock_client(return_value={"value": columns})
 
     list_client = lists_mod.GraphList(client=mock_client)
-    result = list_client.get_list_columns(names=["Title", "field_1"])
+    result = list_client.get_columns(names=["Title", "field_1"])
 
     assert result == columns
     call_path = mock_client.get.call_args[0][0]
@@ -307,8 +221,8 @@ def test_get_list_columns_can_filter_by_names(env: None) -> None:
     assert "name eq 'field_1'" in call_path
 
 
-def test_get_list_views_returns_value(env: None) -> None:
-    """Test that get_list_views returns the value array from the views endpoint."""
+def test_get_views_returns_value(env: None) -> None:
+    """Test that get_views returns the value array from the views endpoint."""
     views = [
         {"id": "view-1", "name": "All Items"},
         {"id": "view-2", "name": "Active Only"},
@@ -316,14 +230,14 @@ def test_get_list_views_returns_value(env: None) -> None:
     mock_client = _mock_client(return_value={"value": views})
 
     list_client = lists_mod.GraphList(client=mock_client)
-    result = list_client.get_list_views()
+    result = list_client.get_views()
 
     assert result == views
-    assert mock_client.get.call_count == 2
+    assert mock_client.get.call_count == 3
 
 
-def test_get_list_views_fallback_returns_plain_array(env: None) -> None:
-    """Test that get_list_views fallback handles views returned as a plain array.
+def test_get_views_fallback_returns_plain_array(env: None) -> None:
+    """Test that get_views fallback handles views returned as a plain array.
 
     Graph API commonly returns expanded collections as plain arrays (not
     wrapped in {"value": [...]}) when using $expand=views. This was the root
@@ -335,13 +249,14 @@ def test_get_list_views_fallback_returns_plain_array(env: None) -> None:
     ]
     mock_client = MagicMock()
     mock_client.get.side_effect = [
-        # _get_list_summary
+        # _fetch_list_summary
         {
             "id": "list-abc",
             "name": "MonitorRNI",
             "displayName": "Monitor RNI",
             "webUrl": "https://contoso.sharepoint.com/sites/site/lists/monitorrni",
         },
+        {"value": _sample_columns()},
         # /views endpoint raises HTTPError → triggers fallback
         requests.HTTPError("403 Forbidden"),
         # $expand=views returns views as a plain array (OData expanded collection)
@@ -349,13 +264,13 @@ def test_get_list_views_fallback_returns_plain_array(env: None) -> None:
     ]
 
     list_client = lists_mod.GraphList(client=mock_client)
-    result = list_client.get_list_views()
+    result = list_client.get_views()
 
     assert result == views
 
 
-def test_get_list_views_fallback_returns_wrapped_value(env: None) -> None:
-    """Test that get_list_views fallback also handles views wrapped in {"value": [...]}."""
+def test_get_views_fallback_returns_wrapped_value(env: None) -> None:
+    """Test that get_views fallback also handles views wrapped in {"value": [...]}."""
     views = [
         {"id": "view-1", "name": "All Items"},
         {"id": "view-2", "name": "Active Only"},
@@ -368,18 +283,19 @@ def test_get_list_views_fallback_returns_wrapped_value(env: None) -> None:
             "displayName": "Monitor RNI",
             "webUrl": "https://contoso.sharepoint.com/sites/site/lists/monitorrni",
         },
+        {"value": _sample_columns()},
         requests.HTTPError("403 Forbidden"),
         {"id": "list-abc", "name": "MonitorRNI", "views": {"value": views}},
     ]
 
     list_client = lists_mod.GraphList(client=mock_client)
-    result = list_client.get_list_views()
+    result = list_client.get_views()
 
     assert result == views
 
 
-def test_get_list_views_returns_empty_when_both_endpoints_fail(env: None) -> None:
-    """Test that get_list_views returns [] when both the /views and $expand endpoints fail."""
+def test_get_views_returns_empty_when_both_endpoints_fail(env: None) -> None:
+    """Test that get_views returns [] when both the /views and $expand endpoints fail."""
     mock_client = MagicMock()
     mock_client.get.side_effect = [
         {
@@ -388,18 +304,317 @@ def test_get_list_views_returns_empty_when_both_endpoints_fail(env: None) -> Non
             "displayName": "Monitor RNI",
             "webUrl": "https://contoso.sharepoint.com/sites/site/lists/monitorrni",
         },
+        {"value": _sample_columns()},
         requests.HTTPError("403 Forbidden"),
         requests.HTTPError("403 Forbidden"),
     ]
 
     list_client = lists_mod.GraphList(client=mock_client)
-    result = list_client.get_list_views()
+    result = list_client.get_views()
 
     assert result == []
 
 
-def test_get_list_view_columns_returns_value(env: None) -> None:
-    """Test that get_list_view_columns returns the value array for a specific view."""
+def test_load_column_schema_filters_metadata(env: None) -> None:
+    """Schema loading should exclude hidden/read-only metadata columns."""
+    list_client = lists_mod.GraphList(client=_mock_client())
+
+    assert [entry["display_name"] for entry in list_client.column_schema] == [
+        "Title",
+        "Customer Name",
+        "Status",
+        "Start Date",
+        "Parent Item",
+    ]
+
+
+def test_get_schema_returns_editable_columns(env: None) -> None:
+    """get_schema should expose simplified schema metadata for callers."""
+    list_client = lists_mod.GraphList(client=_mock_client())
+
+    assert list_client.get_schema() == [
+        {
+            "display_name": "Title",
+            "type": "text",
+            "required": True,
+            "read_only": False,
+        },
+        {
+            "display_name": "Customer Name",
+            "type": "text",
+            "required": False,
+            "read_only": False,
+        },
+        {
+            "display_name": "Status",
+            "type": "choice",
+            "required": False,
+            "read_only": False,
+            "choices": ["Active", "Closed"],
+        },
+        {
+            "display_name": "Start Date",
+            "type": "dateTime",
+            "required": False,
+            "read_only": False,
+        },
+        {
+            "display_name": "Parent Item",
+            "type": "lookup",
+            "required": False,
+            "read_only": True,
+        },
+    ]
+
+
+def test_get_field_types_returns_mapping(env: None) -> None:
+    """get_field_types should map display names to Graph types."""
+    list_client = lists_mod.GraphList(client=_mock_client())
+
+    assert list_client.get_field_types() == {
+        "Title": "text",
+        "Customer Name": "text",
+        "Status": "choice",
+        "Start Date": "dateTime",
+        "Parent Item": "lookup",
+    }
+
+
+def test_get_items_paginates_all_pages(env: None) -> None:
+    """get_items should follow @odata.nextLink and merge all pages."""
+    mock_client = MagicMock()
+    mock_client.get.side_effect = [
+        {
+            "id": "list-abc",
+            "name": "MonitorRNI",
+            "displayName": "Monitor RNI",
+            "webUrl": "https://contoso.sharepoint.com/sites/site/lists/monitorrni",
+        },
+        {"value": _sample_columns()},
+        {
+            "value": [{"id": "1", "fields": {"Title": "Item A", "field_1": "Alpha"}}],
+            "@odata.nextLink": "https://graph.microsoft.com/v1.0/sites/site-xyz/lists/list-abc/items?$skiptoken=page2",
+        },
+        {"value": [{"id": "2", "fields": {"Title": "Item B", "field_1": "Beta"}}]},
+    ]
+
+    list_client = lists_mod.GraphList(client=mock_client)
+    result = list_client.get_items()
+
+    assert result == [
+        {"_id": "1", "Title": "Item A", "Customer Name": "Alpha"},
+        {"_id": "2", "Title": "Item B", "Customer Name": "Beta"},
+    ]
+
+
+def test_get_items_dataframe_returns_dataframe(env: None) -> None:
+    """get_items_dataframe should return a pandas DataFrame with display names."""
+    items = [
+        {
+            "id": "7",
+            "fields": {
+                "Title": "Item A",
+                "field_1": "Alpha",
+                "field_status": "Active",
+            },
+        }
+    ]
+    mock_client = _mock_client(return_value={"value": items})
+    list_client = lists_mod.GraphList(client=mock_client)
+
+    df = list_client.get_items_dataframe(select=["Title", "Customer Name", "Status"])
+
+    assert isinstance(df, pd.DataFrame)
+    assert not df.empty
+    assert df.loc[0, "_id"] == "7"
+    assert df.loc[0, "Title"] == "Item A"
+    assert df.loc[0, "Customer Name"] == "Alpha"
+    assert df.loc[0, "Status"] == "Active"
+
+
+def test_get_items_translates_display_names(env: None) -> None:
+    """get_items should accept displayName selection and translate field keys."""
+    items = [
+        {
+            "id": "7",
+            "fields": {
+                "Title": "Item A",
+                "field_1": "Alpha",
+                "field_status": "Active",
+                "Author": "Hidden metadata",
+            },
+        }
+    ]
+    mock_client = _mock_client(return_value={"value": items})
+    list_client = lists_mod.GraphList(client=mock_client)
+
+    result = list_client.get_items(select=["Title", "Status"])
+
+    # A implementação retorna todas as colunas solicitadas, inclusive Customer Name
+    assert result == [
+        {"_id": "7", "Title": "Item A", "Customer Name": "Alpha", "Status": "Active"}
+    ]
+    call_path = mock_client.get.call_args[0][0]
+    assert "fields(select=Title,field_status)" in call_path
+
+
+def test_get_item_template_structure(env: None) -> None:
+    """Item template should expose only writable columns."""
+    list_client = lists_mod.GraphList(client=_mock_client())
+
+    assert list_client.get_item_template() == {
+        "Title": None,
+        "Customer Name": None,
+        "Status": None,
+        "Start Date": None,
+    }
+    assert list_client.get_item_template(include_optional=False) == {"Title": None}
+
+
+def test_validate_item_type_error(env: None) -> None:
+    """validate_item should reject values that do not match the schema type."""
+    list_client = lists_mod.GraphList(client=_mock_client())
+
+    with pytest.raises(TypeError, match="expects int or float"):
+        list_client._field_types["Customer Name"] = "number"
+        list_client.validate_item({"Title": "Item", "Customer Name": "Alpha"})
+
+
+def test_validate_item_choice_invalid(env: None) -> None:
+    """Choice validation should reject values outside the SharePoint choice set."""
+    list_client = lists_mod.GraphList(client=_mock_client())
+
+    with pytest.raises(ValueError, match="allowed choices"):
+        list_client.validate_item({"Title": "Item", "Status": "Pending"})
+
+
+def test_validate_item_datetime_string(env: None) -> None:
+    """Datetime strings in valid format should be accepted."""
+    list_client = lists_mod.GraphList(client=_mock_client())
+
+    list_client.validate_item({"Title": "Item", "Start Date": "2026-05-27T10:30:00Z"})
+
+
+def test_save_item_create_calls_post(env: None) -> None:
+    """save_item without _id should POST translated internal field names."""
+    mock_client = _mock_client()
+    mock_client.post.return_value = {
+        "id": "42",
+        "fields": {
+            "Title": "New Item",
+            "field_1": "Contoso",
+            "field_status": "Active",
+        },
+    }
+
+    list_client = lists_mod.GraphList(client=mock_client)
+    result = list_client.save_item(
+        {
+            "Title": "New Item",
+            "Customer Name": "Contoso",
+            "Status": "Active",
+            "Start Date": datetime.date(2026, 5, 27),
+        }
+    )
+
+    assert result == {
+        "_id": "42",
+        "Title": "New Item",
+        "Customer Name": "Contoso",
+        "Status": "Active",
+    }
+    mock_client.post.assert_called_once()
+    payload = mock_client.post.call_args.kwargs["json"]
+    assert payload["fields"]["field_1"] == "Contoso"
+    assert payload["fields"]["field_status"] == "Active"
+    assert payload["fields"]["field_date"] == "2026-05-27"
+
+
+def test_save_item_update_calls_patch(env: None) -> None:
+    """save_item with _id should PATCH translated internal field names."""
+    mock_client = _mock_client()
+    mock_client.patch.return_value = {"Title": "Updated", "field_status": "Closed"}
+
+    list_client = lists_mod.GraphList(client=mock_client)
+    result = list_client.save_item(
+        {"_id": "42", "Title": "Updated", "Status": "Closed"}
+    )
+
+    assert result == {"_id": "42", "Title": "Updated", "Status": "Closed"}
+    mock_client.patch.assert_called_once()
+    payload = mock_client.patch.call_args.kwargs["json"]
+    assert payload == {"Title": "Updated", "field_status": "Closed"}
+
+
+def test_save_items_stops_on_first_error(env: None) -> None:
+    """save_items should stop immediately when a validation error occurs."""
+    mock_client = _mock_client()
+    list_client = lists_mod.GraphList(client=mock_client)
+
+    with pytest.raises(ValueError, match="allowed choices"):
+        list_client.save_items(
+            [
+                {"Title": "Item 1", "Status": "Active"},
+                {"Title": "Item 2", "Status": "Pending"},
+            ]
+        )
+
+    assert mock_client.post.call_count == 1
+
+
+def test_save_dataframe_creates_and_updates_rows(env: None) -> None:
+    """save_dataframe should process DataFrame rows via save_items semantics."""
+    mock_client = _mock_client()
+    mock_client.patch.return_value = {
+        "Title": "Updated Item",
+        "field_status": "Closed",
+    }
+    mock_client.post.return_value = {
+        "id": "99",
+        "fields": {
+            "Title": "Created Item",
+            "field_status": "Active",
+        },
+    }
+
+    list_client = lists_mod.GraphList(client=mock_client)
+    df = pd.DataFrame(
+        [
+            {
+                "_id": "42",
+                "Title": "Updated Item",
+                "Status": "Closed",
+                "Customer Name": pd.NA,
+            },
+            {
+                "Title": "Created Item",
+                "Status": "Active",
+                "Customer Name": "Contoso",
+            },
+        ]
+    )
+
+    result = list_client.save_dataframe(df)
+
+    assert len(result) == 2
+    assert result[0] == {"_id": "42", "Title": "Updated Item", "Status": "Closed"}
+    assert result[1] == {"_id": "99", "Title": "Created Item", "Status": "Active"}
+    assert mock_client.patch.call_count == 1
+    assert mock_client.post.call_count == 1
+    patched_payload = mock_client.patch.call_args.kwargs["json"]
+    assert patched_payload["field_1"] is None
+
+
+def test_save_dataframe_requires_dataframe_instance(env: None) -> None:
+    """save_dataframe should reject non-DataFrame inputs."""
+    list_client = lists_mod.GraphList(client=_mock_client())
+
+    with pytest.raises(TypeError, match="pandas.DataFrame"):
+        list_client.save_dataframe(cast(Any, [{"Title": "Item"}]))
+
+
+def test_get_view_columns_returns_value(env: None) -> None:
+    """Test that get_view_columns returns the value array for a specific view."""
     columns = [
         {"name": "Title", "displayName": "Title"},
         {"name": "field_2", "displayName": "Status"},
@@ -407,7 +622,7 @@ def test_get_list_view_columns_returns_value(env: None) -> None:
     mock_client = _mock_client(return_value={"value": columns})
 
     list_client = lists_mod.GraphList(client=mock_client)
-    result = list_client.get_list_view_columns("view-1")
+    result = list_client.get_view_columns("view-1")
 
     assert result == columns
     call_path = mock_client.get.call_args[0][0]
