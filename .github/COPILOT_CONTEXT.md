@@ -1,4 +1,4 @@
-# Copilot Context — MSGraphTest
+# Copilot Context — MSGraphClient
 
 Este arquivo resume o estado atual do repositório para manutenção de código e documentação.
 Atualize-o sempre que a superfície pública ou a estrutura do projeto mudar.
@@ -7,7 +7,7 @@ Atualize-o sempre que a superfície pública ou a estrutura do projeto mudar.
 
 ## Visão Geral
 
-**Objetivo**: biblioteca Python e exemplos para acessar SharePoint via Microsoft Graph com privilégio mínimo, usando uma arquitetura classe-first.
+**Objetivo**: biblioteca Python e exemplos para acessar SharePoint via Microsoft Graph com privilégio mínimo, fornecendo uma camada de abstração sobre MSAL para integração em apps desktop e mobile.
 
 **Modelos suportados**:
 - `GraphClient` como ponto de entrada principal para Microsoft Graph
@@ -41,7 +41,7 @@ No fluxo `delegated`, o acesso efetivo em runtime continua sendo a interseção 
 ## Estrutura Atual
 
 ```text
-MSGraphTest/
+MSGraphClient/
 ├── docs/
 ├── downloads/
 ├── examples/
@@ -57,7 +57,7 @@ MSGraphTest/
 │   └── graph_auth_site_attributes.ipynb
 ├── src/
 │   ├── bulkCreate/
-│   └── msgraphtest/
+│   └── python/
 │       ├── __init__.py
 │       ├── auth.py
 │       ├── drive.py
@@ -71,19 +71,19 @@ MSGraphTest/
 
 ## Graph Surface
 
-### `src/msgraphtest/auth.py`
+### `src/python/auth.py`
 - `GraphClient` encapsula a sessão HTTP autenticada e a formatação de erros Graph.
 - `GraphAuthenticator` valida config, obtém token e expõe metadados do site.
 - A descoberta do site agora vive em `GraphAuthenticator`.
 
-### `src/msgraphtest/drive.py`
+### `src/python/drive.py`
 - `GraphDrive.list_drive_items(folder_path)`
 - `GraphDrive.download_file(item_id, local_path)`
 - `GraphDrive.upload_file(local_path, remote_folder, remote_name=None)`
 - `GraphDrive.read_file_content(item_id)`
 - `GraphDrive.write_file_content(item_id, content)`
 
-### `src/msgraphtest/lists.py`
+### `src/python/lists.py`
 - `GraphList.get_list_views()` com fallback seguro para listas sem views
 - `GraphList.get_list_view_columns(view_id)`
 - `GraphList.get_list_columns(names=None)` com filtro de metadados via Graph

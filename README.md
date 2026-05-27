@@ -1,10 +1,11 @@
 <a id="topo"></a>
 
-# MSGraphTest — SharePoint via Microsoft Graph API
+# MSGraphClient — Camada de abstração MSAL para Microsoft Graph e SharePoint
 
-Um projeto de teste em Python demonstrando como acessar o SharePoint através da
-**Microsoft Graph API** usando MSAL para autenticação. As operações abordadas
-incluem gerenciamento de biblioteca de documentos (drive) e manipulação de listas do SharePoint.
+Uma biblioteca Python para abstrair fluxos de autenticação com **MSAL** e simplificar
+a integração com **Microsoft Graph API** em aplicações desktop e mobile.
+As operações cobertas incluem gerenciamento de biblioteca de documentos (drive)
+e manipulação de listas do SharePoint.
 
 O projeto adota **privilégio mínimo** como regra: o acesso ao SharePoint é feito com
 `Sites.Selected`, sempre restrito a sites explicitamente inscritos. Isso vale tanto
@@ -139,7 +140,7 @@ Este repositório apresenta a seguinte organização:
 
 ```bash
 git clone <repo-url>
-cd MSGraphTest
+cd MSGraphClient
 uv sync
 ```
 

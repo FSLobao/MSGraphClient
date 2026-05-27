@@ -39,7 +39,7 @@ Para configuração com credenciais do cliente (sem login de usuário), veja [se
 > ℹ️ **Autenticação delegada não usa segredo de cliente.** O aplicativo age como um cliente público: o usuário faz login diretamente com suas próprias credenciais no Azure AD. Nenhum `AZURE_CLIENT_SECRET` é necessário nem deve ser criado para este fluxo.
 
 1. Abra o [portal do Azure](https://portal.azure.com) → **Microsoft Entra ID** → **Registros de app** → **Novo registro**.
-2. **Nome**: escolha um nome descritivo, ex: `MSGraphTest-Delegated`.
+2. **Nome**: escolha um nome descritivo, ex: `MSGraphClient-Delegated`.
 3. **Tipos de conta suportados**: selecione **Contas neste diretório organizacional apenas**.
 4. Em **URI de Redirecionamento**, selecione o tipo **Aplicativos móveis e de desktop** (não "Web") e informe `http://localhost`.
    > ⚠️ O tipo "Web" causa o erro `AADSTS900971` em runtime. O tipo correto para clientes públicos locais é **Aplicativos móveis e de desktop**.
@@ -142,7 +142,7 @@ SHAREPOINT_SITE_ID=contoso.sharepoint.com,<site-guid>,<web-guid>
 **Comportamento da janela de login:**
 - Na primeira execução, uma janela de login é aberta no Microsoft Edge ou Chrome em modo aplicativo (sem barra de endereço).
 - Após o login bem-sucedido, a janela fecha automaticamente.
-- O token de acesso e o refresh token são armazenados em cache em `%LOCALAPPDATA%\MSGraphTest\token_cache.json`. Nas execuções seguintes, o token é renovado silenciosamente sem abrir o navegador (o cache dura enquanto o refresh token for válido, tipicamente ~90 dias de inatividade).
+- O token de acesso e o refresh token são armazenados em cache em `%LOCALAPPDATA%\MSGraphClient\token_cache.json`. Nas execuções seguintes, o token é renovado silenciosamente sem abrir o navegador (o cache dura enquanto o refresh token for válido, tipicamente ~90 dias de inatividade).
 - Para forçar um novo login, delete o arquivo de cache.
 
 Depois, execute um exemplo usando a API class-based:

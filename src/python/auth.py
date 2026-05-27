@@ -42,7 +42,7 @@ def _token_cache_path() -> str:
     """Return the path for the persistent MSAL delegated token cache file."""
     cache_dir = os.path.join(
         os.environ.get("LOCALAPPDATA") or os.path.expanduser("~"),
-        "MSGraphTest",
+        "MSGraphClient",
     )
     os.makedirs(cache_dir, exist_ok=True)
     return os.path.join(cache_dir, "token_cache.json")
@@ -79,7 +79,7 @@ def _find_chromium_app_browser(name: str = "_msal_popup") -> str | None:
     the browser with the ``--app`` flag so the auth page opens in a minimal
     app window instead of a regular tab in an existing browser instance.
 
-    An isolated profile stored under ``%LOCALAPPDATA%\\MSGraphTest\\popup-profile``
+    An isolated profile stored under ``%LOCALAPPDATA%\\MSGraphClient\\popup-profile``
     is used so Chromium always applies ``--window-size`` without restoring any
     previously saved window geometry.  The ``--no-signin`` and
     ``--disable-sync`` flags suppress the browser's own account sign-in prompt
@@ -104,7 +104,7 @@ def _find_chromium_app_browser(name: str = "_msal_popup") -> str | None:
 
     popup_profile = os.path.join(
         os.environ.get("LOCALAPPDATA") or os.path.expanduser("~"),
-        "MSGraphTest",
+        "MSGraphClient",
         "popup-profile",
     )
     os.makedirs(popup_profile, exist_ok=True)
@@ -383,7 +383,7 @@ class GraphAuthenticator:
     ) -> dict | None:
         """Acquire token payload from Azure AD via delegated authentication.
 
-        Tokens are cached in ``%LOCALAPPDATA%\\MSGraphTest\\token_cache.json``
+        Tokens are cached in ``%LOCALAPPDATA%\\MSGraphClient\\token_cache.json``
         so the browser is only opened on the first call or after long expiry.
         Subsequent calls are served silently from the cached refresh token.
 

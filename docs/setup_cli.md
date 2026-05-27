@@ -62,7 +62,7 @@ az login
 
 # Criar registro de aplicativo
 APP_OBJECT_ID=$(az ad app create \
-  --display-name "MSGraphTest-SharePoint" \
+  --display-name "MSGraphClient-SharePoint" \
   --sign-in-audience "AzureADMyOrg" \
   --query id -o tsv)
 
@@ -75,7 +75,7 @@ echo "AZURE_TENANT_ID=$AZURE_TENANT_ID"
 # Criar segredo do cliente (válido por 2 anos)
 AZURE_CLIENT_SECRET=$(az ad app credential reset \
   --id $APP_OBJECT_ID \
-  --display-name "MSGraphTest-secret" \
+  --display-name "MSGraphClient-secret" \
   --years 2 \
   --query password -o tsv)
 
@@ -88,7 +88,7 @@ echo "AZURE_CLIENT_SECRET=$AZURE_CLIENT_SECRET"
 Connect-MgGraph -Scopes "Application.ReadWrite.All"
 
 # Criar registro de aplicativo
-$app = New-MgApplication -DisplayName "MSGraphTest-SharePoint" `
+$app = New-MgApplication -DisplayName "MSGraphClient-SharePoint" `
   -SignInAudience "AzureADMyOrg"
 
 $AZURE_CLIENT_ID = $app.AppId
@@ -100,7 +100,7 @@ Write-Host "AZURE_TENANT_ID=$AZURE_TENANT_ID"
 # Criar segredo do cliente (válido por 2 anos)
 $secret = Add-MgApplicationPassword -ApplicationId $app.Id `
   -PasswordCredential @{
-    DisplayName = "MSGraphTest-secret"
+    DisplayName = "MSGraphClient-secret"
     EndDateTime = (Get-Date).AddYears(2)
   }
 
@@ -272,7 +272,7 @@ curl -s -X POST \
     "grantedToIdentities": [{
       "application": {
         "id": "'"${APP_ID}"'",
-        "displayName": "MSGraphTest-SharePoint"
+        "displayName": "MSGraphClient-SharePoint"
       }
     }]
   }'
@@ -290,7 +290,7 @@ curl -s -X POST \
     "grantedToIdentities": [{
       "application": {
         "id": "'"${APP_ID}"'",
-        "displayName": "MSGraphTest-SharePoint"
+        "displayName": "MSGraphClient-SharePoint"
       }
     }]
   }'

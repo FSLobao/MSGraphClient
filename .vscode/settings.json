@@ -1,8 +1,8 @@
 {
-    "python.defaultInterpreterPath": "c:\\GitHub\\MSGraphTest\\.venv\\Scripts\\python.exe",
+    "python.defaultInterpreterPath": "c:\\GitHub\\MSGraphClient\\.venv\\Scripts\\python.exe",
     "cSpell.words": [
         "contoso",
         "dotenv",
-        "msgraphtest"
+        "msgraphclient"
     ]
 }
