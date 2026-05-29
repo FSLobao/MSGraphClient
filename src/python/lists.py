@@ -22,19 +22,15 @@ Covered operations:
 from __future__ import annotations
 
 import datetime
-import os
 from numbers import Real
 from typing import Any
 
 import pandas as pd
 import requests
 from dateutil import parser as dateutil_parser
-from dotenv import load_dotenv
 
 from python.auth import GraphClient
 from python.client import GRAPH_BASE_URL
-
-load_dotenv()
 
 
 class GraphList:
@@ -56,21 +52,23 @@ class GraphList:
 
     def __init__(
         self,
-        list_id: str | None = None,
+        list_id: str,
         client: GraphClient | None = None,
     ) -> None:
-        """Initialize list operations with optional injected configuration.
+        """Initialize list operations.
 
         Args:
-            list_id: Optional SharePoint list ID. If omitted, reads from .env.
+            list_id: SharePoint list ID (required).
             client: Optional pre-configured GraphClient instance.
         """
         self.client = client or GraphClient()
-        resolved_site_id = (
-            self._site_id_from_client(self.client) or self._site_id_from_env()
-        )
-        self.site_id: str = resolved_site_id
-        self.list_id: str = list_id or self._list_id_from_env()
+        self.site_id: str = self._site_id_from_client(self.client)
+        if not self.site_id:
+            raise EnvironmentError(
+                "SharePoint site ID could not be resolved from client. "
+                "Ensure GraphClient was initialized with SHAREPOINT_SITE_ID."
+            )
+        self.list_id: str = list_id
 
         # Public list attributes populated from Graph metadata.
         self.list_info: dict = self._fetch_list_summary()
@@ -100,52 +98,17 @@ class GraphList:
     # Env / client helpers (unchanged)
     # -------------------------------------------------------------------------
 
-    def _site_id_from_env(self) -> str:
-        """Retrieve the SharePoint site ID from environment configuration.
-
-            Reads SHAREPOINT_SITE_ID from environment variables (typically set
-        via .env file).
-
-            Returns:
-                The SharePoint site ID string.
-
-            Raises:
-                EnvironmentError: If SHAREPOINT_SITE_ID is not set or is empty.
-        """
-        site_id = os.environ.get("SHAREPOINT_SITE_ID", "")
-        if not site_id:
-            raise EnvironmentError(
-                "SHAREPOINT_SITE_ID environment variable is not set."
-            )
-        return site_id
-
     @staticmethod
     def _site_id_from_client(client: GraphClient) -> str:
-        """Return site id from a client's authenticator when available."""
+        """Return site id from the client's sharepoint_site_id attribute."""
+        site_id = getattr(client, "sharepoint_site_id", None)
+        if isinstance(site_id, str) and site_id:
+            return site_id
         authenticator = getattr(client, "authenticator", None)
         site_id = getattr(authenticator, "sharepoint_site_id", None)
         if isinstance(site_id, str):
             return site_id
         return ""
-
-    def _list_id_from_env(self) -> str:
-        """Retrieve the SharePoint list ID from environment configuration.
-
-            Reads SHAREPOINT_LIST_ID from environment variables (typically set
-        via .env file).
-
-            Returns:
-                The SharePoint list ID string.
-
-            Raises:
-                EnvironmentError: If SHAREPOINT_LIST_ID is not set or is empty.
-        """
-        list_id = os.environ.get("SHAREPOINT_LIST_ID", "")
-        if not list_id:
-            raise EnvironmentError(
-                "SHAREPOINT_LIST_ID environment variable is not set."
-            )
-        return list_id
 
     def _fetch_list_summary(self) -> dict:
         """Return basic metadata for the configured list."""
@@ -171,7 +134,7 @@ class GraphList:
         """
         for type_key in ("text", "note"):
             if type_key in col:
-                return "text", []
+                return type_key, []
         if "number" in col:
             return "number", []
         if "dateTime" in col:
@@ -467,6 +430,11 @@ class GraphList:
                 raise TypeError(
                     f"Column '{display_name}' expects str, "
                     f"got {type(value).__name__!r}."
+                )
+            if graph_type == "text" and ("\n" in value or "\r" in value):
+                raise TypeError(
+                    f"Column '{display_name}' is single-line text and must not "
+                    f"contain newline characters."
                 )
 
         elif graph_type == "number":

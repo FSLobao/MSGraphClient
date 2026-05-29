@@ -33,7 +33,7 @@ def test_list_drive_items_returns_value(env: None) -> None:
     """Test that list_drive_items returns the value array from API response."""
     items = [{"name": "file1.txt"}, {"name": "file2.txt"}]
     mock_client = _mock_client(return_value={"value": items})
-    drive = drive_mod.GraphDrive(client=mock_client)
+    drive = drive_mod.GraphDrive(drive_id="drive-abc", client=mock_client)
 
     result = drive.list_drive_items()
 
@@ -51,7 +51,7 @@ def test_graph_drive_initialization_loads_basic_metadata(env: None) -> None:
         "driveType": "documentLibrary",
     }
 
-    drive = drive_mod.GraphDrive(client=mock_client)
+    drive = drive_mod.GraphDrive(drive_id="drive-abc", client=mock_client)
 
     assert drive.drive_graph_id == "drive-abc"
     assert drive.drive_name == "Documents"
@@ -82,18 +82,16 @@ def test_graph_drive_initialization_with_explicit_arguments(
     assert "/drives/drive-custom" in mock_client.get.call_args[0][0]
 
 
-def test_list_drive_items_missing_drive_id(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Test that GraphDrive raises EnvironmentError when SHAREPOINT_DRIVE_ID is missing."""
-    monkeypatch.delenv("SHAREPOINT_DRIVE_ID", raising=False)
-
-    with pytest.raises(EnvironmentError, match="SHAREPOINT_DRIVE_ID"):
-        drive_mod.GraphDrive(client=MagicMock())
+def test_list_drive_items_missing_drive_id() -> None:
+    """Test that GraphDrive requires drive_id as a parameter."""
+    with pytest.raises(TypeError):
+        drive_mod.GraphDrive(client=MagicMock())  # type: ignore[call-arg]
 
 
 def test_download_file(env: None, tmp_path: Path) -> None:
     """Test that download_file correctly fetches and writes a file to local disk."""
     mock_client = _mock_client(raw_bytes=b"file content")
-    drive = drive_mod.GraphDrive(client=mock_client)
+    drive = drive_mod.GraphDrive(drive_id="drive-abc", client=mock_client)
 
     dest = tmp_path / "downloaded.txt"
     result = drive.download_file("item-123", dest)
@@ -107,7 +105,7 @@ def test_upload_file(env: None, tmp_path: Path) -> None:
     src = tmp_path / "upload_me.txt"
     src.write_bytes(b"hello world")
     mock_client = _mock_client()
-    drive = drive_mod.GraphDrive(client=mock_client)
+    drive = drive_mod.GraphDrive(drive_id="drive-abc", client=mock_client)
 
     result = drive.upload_file(src)
 
@@ -118,7 +116,7 @@ def test_upload_file(env: None, tmp_path: Path) -> None:
 def test_read_file_content(env: None) -> None:
     """Test that read_file_content decodes binary response as UTF-8 text."""
     mock_client = _mock_client(raw_bytes="Hello, Graph!".encode("utf-8"))
-    drive = drive_mod.GraphDrive(client=mock_client)
+    drive = drive_mod.GraphDrive(drive_id="drive-abc", client=mock_client)
 
     content = drive.read_file_content("item-456")
 
@@ -129,7 +127,7 @@ def test_write_file_content(env: None) -> None:
     """Test that write_file_content encodes text and sends to Graph API."""
     mock_client = _mock_client()
     mock_client.put_bytes.return_value = {"id": "item-456"}
-    drive = drive_mod.GraphDrive(client=mock_client)
+    drive = drive_mod.GraphDrive(drive_id="drive-abc", client=mock_client)
 
     result = drive.write_file_content("item-456", "updated content")
 

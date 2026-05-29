@@ -5,13 +5,11 @@ Usage:
     uv run examples/example_list_get.py
 """
 
-from dotenv import load_dotenv
 from requests import HTTPError
 
 from python.auth import GraphClient
 from python.lists import GraphList
 
-load_dotenv()
 
 
 def _prompt_view_selection(views: list[dict]) -> dict | None:
@@ -47,7 +45,8 @@ def main() -> None:
     import os
 
     client = GraphClient()
-    list_client = GraphList(client=client)
+    list_id = os.environ["SHAREPOINT_LIST_ID"]
+    list_client = GraphList(list_id=list_id, client=client)
 
     # ── Option C: manual column config from environment ───────────────────────
     env_columns = os.environ.get("SHAREPOINT_VIEW_COLUMNS", "").strip()

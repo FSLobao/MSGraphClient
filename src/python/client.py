@@ -1,20 +1,19 @@
 """Microsoft Graph HTTP client and authorization error.
 
-This module is intentionally kept separate from authentication logic
-so that HTTP-level concerns (request dispatch, error formatting) are
-decoupled from token acquisition.
-
-The ``GraphAuthenticator`` class lives in :mod:`python.auth` and is
-imported lazily inside :meth:`GraphClient.__init__` to avoid a circular
-dependency (``GraphAuthenticator`` creates ``GraphClient`` instances at
-runtime and vice-versa).
+This module is the primary entry point for the library. It reads environment
+configuration (via ``.env``) and passes credentials to
+:class:`python.auth.GraphAuthenticator` for token acquisition.
 """
 
 from __future__ import annotations
 
+import os
 from typing import TYPE_CHECKING, Any
 
 import requests
+from dotenv import load_dotenv
+
+load_dotenv()
 
 if TYPE_CHECKING:
     from python.auth import GraphAuthenticator
@@ -124,31 +123,46 @@ class GraphClient:
         Args:
             token: Optional explicit bearer token.
             authenticator: Optional pre-built GraphAuthenticator to reuse.
-            sharepoint_site_id: Optional site id forwarded to authenticator init.
+            sharepoint_site_id: Optional site id (overrides env).
             auth_mode: Optional auth mode override (client_credentials | delegated).
         """
         # Lazy import breaks the circular dependency with python.auth.
         from python.auth import GraphAuthenticator as _GraphAuthenticator
 
         if authenticator is None:
+            tenant_id = os.environ.get("AZURE_TENANT_ID", "")
+            client_id = os.environ.get("AZURE_CLIENT_ID", "")
+            client_secret = os.environ.get("AZURE_CLIENT_SECRET", "")
+            redirect_uri = os.environ.get("AZURE_REDIRECT_URI", "http://localhost")
+            delegated_login_mode = os.environ.get(
+                "GRAPH_DELEGATED_LOGIN_MODE", "interactive"
+            )
+            delegated_scopes_raw = os.environ.get("GRAPH_DELEGATED_SCOPES", "")
+            resolved_auth_mode = auth_mode or os.environ.get(
+                "GRAPH_AUTH_MODE", "client_credentials"
+            )
+
             self.authenticator = _GraphAuthenticator(
-                sharepoint_site_id=sharepoint_site_id,
+                tenant_id=tenant_id,
+                client_id=client_id,
+                client_secret=client_secret,
+                auth_mode=resolved_auth_mode,
+                redirect_uri=redirect_uri,
+                delegated_scopes=_GraphAuthenticator._parse_delegated_scopes(
+                    delegated_scopes_raw
+                ),
+                delegated_login_mode=delegated_login_mode,
                 token=token,
-                create_client=False,
-                auth_mode=auth_mode,
             )
         else:
             self.authenticator = authenticator
-            if sharepoint_site_id:
-                self.authenticator.sharepoint_site_id = sharepoint_site_id
 
-        self._token: str = (
-            token
-            or self.authenticator.token
-            or _GraphAuthenticator._acquire_token_from_env_internal(
-                auth_mode=self.authenticator.auth_mode
+        self._token: str = token or self.authenticator.token
+        if not self._token:
+            raise RuntimeError(
+                "No valid token available. Ensure credentials are configured "
+                "so GraphAuthenticator can acquire a token."
             )
-        )
         self.authenticator.token = self._token
 
         self._session = requests.Session()
@@ -159,11 +173,25 @@ class GraphClient:
             }
         )
 
-        # Bind authenticator to this concrete Graph client instance.
-        self.authenticator.client = self
-        self.authenticator._client = self
-        if self.authenticator.sharepoint_site_id and not self.authenticator.site_data:
-            self.authenticator._load_site_summary()
+        # Resolve site id and load site info.
+        self.sharepoint_site_id: str = (
+            sharepoint_site_id
+            or self.authenticator.sharepoint_site_id
+            or os.environ.get("SHAREPOINT_SITE_ID", "")
+        )
+        self.authenticator.sharepoint_site_id = self.sharepoint_site_id
+
+        # Public site attributes.
+        self.site_data: dict = {}
+        self.site_graph_id: str = ""
+        self.site_name: str = ""
+        self.site_display_name: str = ""
+        self.site_web_url: str = ""
+        self.site_drives: list[dict] = []
+        self.site_lists: list[dict] = []
+
+        if self.sharepoint_site_id:
+            self._load_site_info()
 
     def get(self, path: str, **kwargs: Any) -> dict:
         """Make a GET request to the Graph API."""
@@ -206,3 +234,42 @@ class GraphClient:
         response = self._session.get(url, **kwargs)
         self._raise_for_status(response)
         return response.content
+
+    # -----------------------------------------------------------------
+    # Site discovery
+    # -----------------------------------------------------------------
+
+    def _load_site_info(self) -> None:
+        """Fetch and store site metadata, drives, and lists."""
+        select = "id,name,displayName,webUrl,description,createdDateTime,lastModifiedDateTime"
+        self.site_data = self.get(f"/sites/{self.sharepoint_site_id}?$select={select}")
+        self.site_graph_id = str(self.site_data.get("id", ""))
+        self.site_name = str(self.site_data.get("name", ""))
+        self.site_display_name = str(self.site_data.get("displayName", ""))
+        self.site_web_url = str(self.site_data.get("webUrl", ""))
+
+        drives_data = self.get(
+            f"/sites/{self.sharepoint_site_id}/drives?$select=id,name,webUrl,driveType"
+        )
+        self.site_drives = drives_data.get("value", [])
+
+        lists_data = self.get(
+            f"/sites/{self.sharepoint_site_id}/lists?$select=id,name,displayName,webUrl"
+        )
+        self.site_lists = lists_data.get("value", [])
+
+    def refresh_site_info(self) -> None:
+        """Reload site metadata, drives, and lists from the Graph API."""
+        if not self.sharepoint_site_id:
+            raise RuntimeError(
+                "Cannot refresh site info: sharepoint_site_id is not set."
+            )
+        self._load_site_info()
+
+    def get_site_contents(self) -> dict:
+        """Return site metadata, drives, and lists."""
+        return {
+            "site": self.site_data,
+            "drives": self.site_drives,
+            "lists": self.site_lists,
+        }

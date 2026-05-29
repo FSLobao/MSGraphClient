@@ -9,9 +9,7 @@ Usage:
 """
 
 from pathlib import Path
-from dotenv import load_dotenv
 
-load_dotenv()
 
 from python.auth import GraphClient
 from python.drive import GraphDrive
@@ -30,7 +28,9 @@ def main() -> None:
     Saved files are placed in examples/downloads/.
     """
     client = GraphClient()
-    drive = GraphDrive(client=client)
+    import os
+    drive_id = os.environ["SHAREPOINT_DRIVE_ID"]
+    drive = GraphDrive(drive_id=drive_id, client=client)
 
     item_id = ITEM_ID
 

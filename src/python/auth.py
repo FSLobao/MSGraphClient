@@ -4,22 +4,15 @@ Supports two authentication modes:
 - client_credentials (app-only)
 - delegated (user-interactive)
 
-Required environment variables depend on mode:
-    client_credentials:
-        AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET
-    delegated:
-        AZURE_TENANT_ID, AZURE_CLIENT_ID
+Credentials are received as explicit parameters (environment reading is
+handled by :class:`python.client.GraphClient`).
 """
 
 import os
 
 import msal
-import requests
-from dotenv import load_dotenv
 
 from python.client import GraphAuthorizationError, GraphClient  # noqa: F401
-
-load_dotenv()
 
 GRAPH_SCOPES = ["https://graph.microsoft.com/.default"]
 DEFAULT_GRAPH_AUTH_MODE = "client_credentials"
@@ -146,101 +139,51 @@ class GraphAuthenticator:
 
     The resolved token is exposed in the public attribute ``token``.
 
-    Public methods:
-        - list_site_drives
-        - list_site_lists
-        - get_site_contents
-
     Public attributes:
         - token
-        - client
+        - auth_mode
 
     Internal methods (implementation detail):
-        - _validate_config
+        - _validate_credentials
         - _acquire_token
-        - _site_id
-        - _graph_get
-        - _get_site_summary
         - _acquire_access_token_result
-        - _acquire_token_from_env_internal
+
     """
 
     def __init__(
         self,
-        sharepoint_site_id: str | None = None,
+        tenant_id: str = "",
+        client_id: str = "",
+        client_secret: str = "",
+        auth_mode: str = "client_credentials",
+        redirect_uri: str = "http://localhost",
+        delegated_scopes: list[str] | None = None,
+        delegated_login_mode: str = "interactive",
         token: str | None = None,
-        client: GraphClient | None = None,
-        create_client: bool = True,
-        auth_mode: str | None = None,
+        sharepoint_site_id: str = "",
     ) -> None:
-        self.tenant_id: str = ""
-        self.client_id: str = ""
-        self.client_secret: str = ""
-        self.redirect_uri: str = ""
-        self.delegated_scopes: list[str] = []
-        self.delegated_login_mode: str = "interactive"
+        self.tenant_id: str = tenant_id
+        self.client_id: str = client_id
+        self.client_secret: str = client_secret
+        self.redirect_uri: str = redirect_uri
+        self.delegated_scopes: list[str] = (
+            delegated_scopes or DELEGATED_GRAPH_SCOPES.copy()
+        )
+        self.delegated_login_mode: str = (
+            delegated_login_mode.strip().lower().replace("-", "_")
+        )
         self.token: str = ""
-        self.sharepoint_site_id: str = ""
+        self.sharepoint_site_id: str = sharepoint_site_id
         self.auth_mode = self._resolve_auth_mode(auth_mode)
 
-        # Public site attributes populated at initialization time.
-        self.site_data: dict = {}
-        self.site_graph_id: str = ""
-        self.site_name: str = ""
-        self.site_display_name: str = ""
-        self.site_web_url: str = ""
-
-        if client is None:
-            if token is None:
-                self._validate_config()
-                self.token = self._acquire_token()
-            else:
-                self.token = token
-
-            if create_client:
-                self.client = GraphClient(
-                    token=self.token,
-                    authenticator=self,
-                    sharepoint_site_id=sharepoint_site_id,
-                )
-            else:
-                self.client = None
+        if token:
+            self.token = token
         else:
-            self.client = client
-            client_token = getattr(client, "_token", None)
-            self.token = token or (
-                client_token if isinstance(client_token, str) else ""
-            )
+            self._validate_credentials()
+            self.token = self._acquire_token()
 
-        # Backwards-compatibility alias for previous private attribute usage.
-        self._client = self.client
-
-        if sharepoint_site_id:
-            self.sharepoint_site_id = sharepoint_site_id
-        elif create_client:
-            self.sharepoint_site_id = self._site_id()
-        else:
-            self.sharepoint_site_id = os.environ.get("SHAREPOINT_SITE_ID", "")
-
-        if self.client is not None and not self.site_data:
-            self._load_site_summary()
-
-    def _validate_config(self) -> None:
-        """Load and validate required Azure AD auth values from environment."""
-        self.tenant_id = os.environ.get("AZURE_TENANT_ID", "")
-        self.client_id = os.environ.get("AZURE_CLIENT_ID", "")
-        self.client_secret = os.environ.get("AZURE_CLIENT_SECRET", "")
-        self.redirect_uri = os.environ.get("AZURE_REDIRECT_URI", "http://localhost")
-        self.delegated_login_mode = (
-            os.environ.get("GRAPH_DELEGATED_LOGIN_MODE", "interactive")
-            .strip()
-            .lower()
-            .replace("-", "_")
-        )
-        self.delegated_scopes = self._parse_delegated_scopes(
-            os.environ.get("GRAPH_DELEGATED_SCOPES", "")
-        )
-
+    def _validate_credentials(self) -> None:
+        """Validate that required credentials are present for the selected mode."""
         if self.auth_mode == "delegated":
             if not all([self.tenant_id, self.client_id]):
                 raise EnvironmentError(
@@ -306,56 +249,6 @@ class GraphAuthenticator:
             )
 
         return result["access_token"]
-
-    def _site_id(self) -> str:
-        """Retrieve and validate SHAREPOINT_SITE_ID from environment."""
-        site_id = os.environ.get("SHAREPOINT_SITE_ID", "")
-        if not site_id:
-            raise EnvironmentError(
-                "SHAREPOINT_SITE_ID environment variable is not set."
-            )
-        return site_id
-
-    def _graph_get(self, path: str) -> dict:
-        """Execute a Graph GET request through GraphClient."""
-        if self.client is None:
-            raise RuntimeError("Graph client is not initialized.")
-        return self.client.get(path)
-
-    def _load_site_summary(self) -> None:
-        """Fetch and store public site metadata attributes."""
-        self.site_data = self._get_site_summary()
-        self.site_graph_id = str(self.site_data.get("id", ""))
-        self.site_name = str(self.site_data.get("name", ""))
-        self.site_display_name = str(self.site_data.get("displayName", ""))
-        self.site_web_url = str(self.site_data.get("webUrl", ""))
-
-    def _get_site_summary(self) -> dict:
-        """Return metadata for the configured SharePoint site."""
-        select = "id,name,displayName,webUrl,description,createdDateTime,lastModifiedDateTime"
-        return self._graph_get(f"/sites/{self.sharepoint_site_id}?$select={select}")
-
-    def list_site_drives(self) -> list[dict]:
-        """Return all document libraries (drives) for the configured site."""
-        data = self._graph_get(
-            f"/sites/{self.sharepoint_site_id}/drives?$select=id,name,webUrl,driveType"
-        )
-        return data.get("value", [])
-
-    def list_site_lists(self) -> list[dict]:
-        """Return all SharePoint lists for the configured site."""
-        data = self._graph_get(
-            f"/sites/{self.sharepoint_site_id}/lists?$select=id,name,displayName,webUrl"
-        )
-        return data.get("value", [])
-
-    def get_site_contents(self) -> dict:
-        """Return site metadata, drives, and lists."""
-        return {
-            "site": self.site_data,
-            "drives": self.list_site_drives(),
-            "lists": self.list_site_lists(),
-        }
 
     @staticmethod
     def _acquire_access_token_result(
@@ -462,20 +355,11 @@ class GraphAuthenticator:
 
     @staticmethod
     def _resolve_auth_mode(auth_mode: str | None) -> str:
-        """Resolve auth mode from explicit argument or environment."""
-        resolved = auth_mode or os.environ.get(
-            "GRAPH_AUTH_MODE", DEFAULT_GRAPH_AUTH_MODE
-        )
+        """Validate and normalize auth mode string."""
+        resolved = auth_mode or DEFAULT_GRAPH_AUTH_MODE
         normalized = resolved.strip().lower().replace("-", "_")
 
-        aliases = {
-            "app_only": "client_credentials",
-            "app": "client_credentials",
-            "client": "client_credentials",
-            "delegated": "delegated",
-            "user": "delegated",
-        }
-        mode = aliases.get(normalized, normalized)
+        mode = normalized
         if mode not in ("client_credentials", "delegated"):
             raise ValueError(
                 "Unsupported GRAPH_AUTH_MODE. Use 'client_credentials' or 'delegated'."
@@ -503,74 +387,3 @@ class GraphAuthenticator:
             ):
                 scope_values.append(value)
         return scope_values or DELEGATED_GRAPH_SCOPES.copy()
-
-    @staticmethod
-    def _acquire_token_from_env_internal(auth_mode: str | None = None) -> str:
-        """Acquire and return a Graph token using only environment configuration."""
-        resolved_auth_mode = GraphAuthenticator._resolve_auth_mode(auth_mode)
-        tenant_id = os.environ.get("AZURE_TENANT_ID", "")
-        client_id = os.environ.get("AZURE_CLIENT_ID", "")
-        if resolved_auth_mode == "delegated":
-            if not all([tenant_id, client_id]):
-                raise EnvironmentError(
-                    "Missing one or more required environment variables for delegated "
-                    "mode: AZURE_TENANT_ID, AZURE_CLIENT_ID"
-                )
-
-            redirect_uri = os.environ.get("AZURE_REDIRECT_URI", "http://localhost")
-            delegated_login_mode = (
-                os.environ.get("GRAPH_DELEGATED_LOGIN_MODE", "interactive")
-                .strip()
-                .lower()
-                .replace("-", "_")
-            )
-            if delegated_login_mode not in ("interactive", "device_code"):
-                raise EnvironmentError(
-                    "GRAPH_DELEGATED_LOGIN_MODE must be 'interactive' or 'device_code'"
-                )
-
-            delegated_scopes = GraphAuthenticator._parse_delegated_scopes(
-                os.environ.get("GRAPH_DELEGATED_SCOPES", "")
-            )
-            result = GraphAuthenticator._acquire_access_token_result_delegated(
-                tenant_id=tenant_id,
-                client_id=client_id,
-                scopes=delegated_scopes,
-                login_mode=delegated_login_mode,
-                redirect_uri=redirect_uri,
-            )
-            if not isinstance(result, dict):
-                raise RuntimeError(
-                    "Failed to acquire delegated token: invalid response from MSAL"
-                )
-
-            if "access_token" not in result:
-                error = result.get("error", "unknown")
-                description = result.get("error_description", "")
-                raise RuntimeError(
-                    f"Failed to acquire delegated token: {error} - {description}"
-                )
-
-            return result["access_token"]
-
-        client_secret = os.environ.get("AZURE_CLIENT_SECRET", "")
-        if not all([tenant_id, client_id, client_secret]):
-            raise EnvironmentError(
-                "Missing one or more required environment variables: "
-                "AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET"
-            )
-
-        result = GraphAuthenticator._acquire_access_token_result(
-            tenant_id=tenant_id,
-            client_id=client_id,
-            client_secret=client_secret,
-        )
-        if not isinstance(result, dict):
-            raise RuntimeError("Failed to acquire token: invalid response from MSAL")
-
-        if "access_token" not in result:
-            error = result.get("error", "unknown")
-            description = result.get("error_description", "")
-            raise RuntimeError(f"Failed to acquire token: {error} - {description}")
-
-        return result["access_token"]

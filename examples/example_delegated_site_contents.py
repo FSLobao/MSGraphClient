@@ -10,19 +10,15 @@ Expected .env settings:
     AZURE_CLIENT_ID=...
 """
 
-from dotenv import load_dotenv
-
 from python.auth import GraphClient, GraphAuthorizationError
-
-load_dotenv()
 
 
 def main() -> None:
     """Authenticate in delegated mode and print basic SharePoint site info."""
-    client = GraphClient(auth_mode="delegated")
+    client = GraphClient()
 
     print("Delegated token acquired. Fetching site contents...\n")
-    contents = client.authenticator.get_site_contents()
+    contents = client.get_site_contents()
     site = contents["site"]
 
     print("Site")

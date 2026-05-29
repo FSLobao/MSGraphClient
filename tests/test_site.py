@@ -1,51 +1,58 @@
-"""Tests for GraphAuthenticator site-discovery methods."""
+"""Tests for GraphClient site-discovery methods."""
 
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
-from python.auth import GraphAuthenticator
+import python.auth as auth_mod
+from python.client import GraphClient
 
 
-@pytest.fixture()
-def env(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Set up environment variables required for GraphAuthenticator initialization."""
-    monkeypatch.setenv("AZURE_TENANT_ID", "tenant-id")
-    monkeypatch.setenv("AZURE_CLIENT_ID", "client-id")
-    monkeypatch.setenv("AZURE_CLIENT_SECRET", "client-secret")
-
-
-def _mock_client() -> MagicMock:
-    """Create a mock GraphClient-like object for authenticator tests."""
-    client = MagicMock()
-    client.get.side_effect = [
-        {
-            "id": "site-1",
-            "name": "MySite",
-            "displayName": "My Site",
-            "webUrl": "https://contoso/sites/site-1",
-        },
-        {"value": [{"id": "drive-1", "name": "Documents"}]},
-        {"value": [{"id": "list-1", "displayName": "Tasks"}]},
-    ]
-    return client
-
-
-def test_get_site_contents_combines_site_drives_lists(env: None) -> None:
+def test_get_site_contents_combines_site_drives_lists(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Test that get_site_contents returns site metadata and resource lists."""
-    mock_client = _mock_client()
+    monkeypatch.delenv("SHAREPOINT_SITE_ID", raising=False)
 
-    auth = GraphAuthenticator(sharepoint_site_id="site-1", client=mock_client)
-    result = auth.get_site_contents()
+    mock_authenticator = MagicMock()
+    mock_authenticator.token = "fake-token"
+    mock_authenticator.sharepoint_site_id = "site-1"
+
+    with patch.object(GraphClient, "_load_site_info") as mock_load:
+        client = auth_mod.GraphClient(
+            authenticator=mock_authenticator, sharepoint_site_id="site-1"
+        )
+
+    mock_load.assert_called_once()
+
+    # Simulate what _load_site_info would set.
+    client.site_data = {"id": "site-1", "displayName": "My Site"}
+    client.site_graph_id = "site-1"
+    client.site_display_name = "My Site"
+    client.site_drives = [{"id": "drive-1", "name": "Documents"}]
+    client.site_lists = [{"id": "list-1", "displayName": "Tasks"}]
+
+    result = client.get_site_contents()
 
     assert result["site"]["id"] == "site-1"
     assert result["drives"][0]["id"] == "drive-1"
     assert result["lists"][0]["id"] == "list-1"
+    assert client.site_graph_id == "site-1"
+    assert client.site_display_name == "My Site"
 
 
-def test_get_site_contents_missing_site_id(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Test that GraphAuthenticator raises if SHAREPOINT_SITE_ID is missing."""
+def test_site_info_not_loaded_without_site_id(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test that site info is not loaded when site_id is empty."""
     monkeypatch.delenv("SHAREPOINT_SITE_ID", raising=False)
 
-    with pytest.raises(EnvironmentError, match="SHAREPOINT_SITE_ID"):
-        GraphAuthenticator(client=MagicMock())
+    mock_authenticator = MagicMock()
+    mock_authenticator.token = "fake-token"
+    mock_authenticator.sharepoint_site_id = ""
+
+    client = auth_mod.GraphClient(authenticator=mock_authenticator)
+
+    assert client.site_data == {}
+    assert client.site_drives == []
+    assert client.site_lists == []

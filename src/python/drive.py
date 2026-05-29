@@ -14,14 +14,9 @@ Covered operations:
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 
-from dotenv import load_dotenv
-
 from python.auth import GraphClient
-
-load_dotenv()
 
 
 class GraphDrive:
@@ -33,16 +28,16 @@ class GraphDrive:
 
     def __init__(
         self,
-        drive_id: str | None = None,
+        drive_id: str,
         client: GraphClient | None = None,
     ) -> None:
-        """Initialize drive operations with optional injected configuration.
+        """Initialize drive operations.
 
         Args:
-            drive_id: Optional SharePoint drive ID. If omitted, reads from .env.
+            drive_id: SharePoint drive ID (required).
             client: Optional pre-configured GraphClient instance.
         """
-        self.drive_id: str = drive_id or self._drive_id_from_env()
+        self.drive_id: str = drive_id
         self.client = client or GraphClient()
 
         # Public drive attributes populated from Graph metadata.
@@ -51,25 +46,6 @@ class GraphDrive:
         self.drive_name: str = str(self.drive_info.get("name", ""))
         self.drive_web_url: str = str(self.drive_info.get("webUrl", ""))
         self.drive_type: str = str(self.drive_info.get("driveType", ""))
-
-    def _drive_id_from_env(self) -> str:
-        """Retrieve the SharePoint drive ID from environment configuration.
-
-            Reads SHAREPOINT_DRIVE_ID from environment variables (typically set
-        via .env file).
-
-            Returns:
-                The SharePoint drive ID string.
-
-            Raises:
-                EnvironmentError: If SHAREPOINT_DRIVE_ID is not set or is empty.
-        """
-        drive_id = os.environ.get("SHAREPOINT_DRIVE_ID", "")
-        if not drive_id:
-            raise EnvironmentError(
-                "SHAREPOINT_DRIVE_ID environment variable is not set."
-            )
-        return drive_id
 
     def _get_drive_summary(self) -> dict:
         """Return basic metadata for the configured drive."""

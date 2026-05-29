@@ -9,9 +9,7 @@ Usage:
 
 import os
 
-from dotenv import load_dotenv
 
-load_dotenv()
 
 from python.auth import GraphClient
 from python.drive import GraphDrive
@@ -29,7 +27,9 @@ def main() -> None:
     content back to the same drive item.
     """
     client = GraphClient()
-    drive = GraphDrive(client=client)
+    import os
+    drive_id = os.environ["SHAREPOINT_DRIVE_ID"]
+    drive = GraphDrive(drive_id=drive_id, client=client)
 
     if not ITEM_ID:
         print("Please set DRIVE_ITEM_ID in .env to a real drive item ID.")

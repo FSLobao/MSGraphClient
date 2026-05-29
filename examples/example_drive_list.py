@@ -5,11 +5,9 @@ Usage:
     uv run examples/example_drive_list.py
 """
 
-from dotenv import load_dotenv
 from python.auth import GraphClient
 from python.drive import GraphDrive
 
-load_dotenv()
 
 
 def main() -> None:
@@ -18,7 +16,9 @@ def main() -> None:
     Shows the name, type (file or folder), and size of each item.
     """
     client = GraphClient()
-    drive = GraphDrive(client=client)
+    import os
+    drive_id = os.environ["SHAREPOINT_DRIVE_ID"]
+    drive = GraphDrive(drive_id=drive_id, client=client)
 
     print("Listing items in the root of the configured drive...\n")
     items = drive.list_drive_items()

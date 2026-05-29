@@ -6,13 +6,11 @@ Place a file at the LOCAL_FILE path (or change the variable), then run:
 """
 
 from pathlib import Path
-from dotenv import load_dotenv
 from requests import HTTPError
 
 from python.auth import GraphClient
 from python.drive import GraphDrive
 
-load_dotenv()
 
 # ── Configuration ───────────────────────────────────────────────────────────
 # Path to the file you want to upload
@@ -29,7 +27,9 @@ def main() -> int:
     remote folder using the simple (non-resumable) upload endpoint.
     """
     client = GraphClient()
-    drive = GraphDrive(client=client)
+    import os
+    drive_id = os.environ["SHAREPOINT_DRIVE_ID"]
+    drive = GraphDrive(drive_id=drive_id, client=client)
 
     if not LOCAL_FILE.exists():
         # Create a sample file for demonstration

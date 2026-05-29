@@ -7,9 +7,7 @@ Usage:
     uv run examples/example_list_create.py
 """
 
-from dotenv import load_dotenv
-
-load_dotenv()
+import os
 
 from python.auth import GraphClient
 from python.lists import GraphList
@@ -29,7 +27,8 @@ def main() -> None:
     ID and assigned field values.
     """
     client = GraphClient()
-    list_client = GraphList(client=client)
+    list_id = os.environ["SHAREPOINT_LIST_ID"]
+    list_client = GraphList(list_id=list_id, client=client)
 
     print(f"Creating new list item with fields: {ITEM_FIELDS}")
     result = list_client.save_item(ITEM_FIELDS)

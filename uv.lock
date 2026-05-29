@@ -389,6 +389,7 @@ source = { editable = "." }
 dependencies = [
     { name = "msal" },
     { name = "pandas" },
+    { name = "python-dateutil" },
     { name = "python-dotenv" },
     { name = "requests" },
 ]
@@ -404,6 +405,7 @@ dev = [
 requires-dist = [
     { name = "msal", specifier = ">=1.28.0" },
     { name = "pandas", specifier = ">=2.2.0" },
+    { name = "python-dateutil", specifier = ">=2.8.0" },
     { name = "python-dotenv", specifier = ">=1.0.0" },
     { name = "requests", specifier = ">=2.31.0" },
 ]
