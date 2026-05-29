@@ -379,7 +379,7 @@ class GraphAuthenticator:
         _success_html = (
             "<html><body style='font-family:sans-serif;display:flex;align-items:center;"
             "justify-content:center;height:100vh;margin:0'>"
-            "<p>Autenticação realizada. Pode fechar esta janela.</p>"
+            "<p>Authentication completed. You may close this window</p>"
             "<script>window.onload=function(){"
             "window.open('','_self','');window.close();};</script>"
             "</body></html>"
