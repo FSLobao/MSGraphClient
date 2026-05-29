@@ -47,7 +47,7 @@ Este repositório apresenta a seguinte organização:
 				<li><code>Bulk-CreateApps.ps1</code>: alternativa PowerShell para execucao operacional em ambientes Windows</li>
 			</ul>
 		</li>
-		<li><strong>python/</strong>: implementacao do cliente Graph e operacoes de SharePoint
+		<li><strong>msgraphclient/</strong>: implementacao do cliente Graph e operacoes de SharePoint
 			<ul>
 				<li><code>__init__.py</code>: ponto de entrada do pacote para importacoes publicas</li>
 				<li><code>auth.py</code>: autenticacao MSAL (app_only/delegated) — valida credenciais e adquire tokens</li>
@@ -161,19 +161,22 @@ Variáveis obrigatórias em `.env`:
 |---|---|
 | `AZURE_TENANT_ID` | ID do tenant (locatário) do Azure AD |
 | `AZURE_CLIENT_ID` | ID do cliente do registro de aplicativo |
-| `AZURE_CLIENT_SECRET` | Segredo do cliente do registro de aplicativo |
 | `SHAREPOINT_SITE_ID` | ID do site do Graph (ex: `contoso.sharepoint.com,guid,guid`) |
-| `SHAREPOINT_DRIVE_ID` | ID da drive (unidade) da biblioteca de documentos |
-| `SHAREPOINT_LIST_ID` | ID da lista para operações de lista |
+| `AZURE_CLIENT_SECRET` | Segredo do cliente (obrigatório apenas para `client_credentials`) |
 
-Variáveis opcionais para modo de autenticação:
+Variáveis opcionais (possuem valor default):
 
-| Variável | Descrição |
-|---|---|
-| `GRAPH_AUTH_MODE` | Modo de autenticação (`client_credentials` ou `delegated`) |
-| `AZURE_REDIRECT_URI` | URI de redirecionamento para login interativo em modo `delegated` |
-| `GRAPH_DELEGATED_LOGIN_MODE` | `interactive` (browser local) ou `device_code` |
-| `GRAPH_DELEGATED_SCOPES` | Escopos delegados (separados por espaço ou vírgula) |
+| Variável | Default | Descrição |
+|---|---|---|
+| `GRAPH_AUTH_MODE` | `client_credentials` | Modo de autenticação (`client_credentials` ou `delegated`) |
+| `AZURE_REDIRECT_URI` | `http://localhost` | URI de redirecionamento para login interativo em modo `delegated` |
+| `GRAPH_DELEGATED_LOGIN_MODE` | `interactive` | `interactive` (browser local) ou `device_code` |
+| `GRAPH_DELEGATED_SCOPES` | `Sites.Selected` | Escopos delegados (separados por espaço ou vírgula) |
+| `GRAPH_AUTH_POPUP_SIZE` | `520x680` | Tamanho da janela de login (formato `WxH`) |
+| `SHAREPOINT_DRIVE_ID` | — | ID da biblioteca de documentos (necessário para `GraphDrive`) |
+| `SHAREPOINT_LIST_ID` | — | ID da lista SharePoint (necessário para `GraphList`) |
+
+Consulte [`.env.example`](.env.example) para um modelo completo com explicações detalhadas.
 
 > **Encontrando IDs** — veja [docs/getting_started.md](docs/getting_started.md).
 
