@@ -1,9 +1,11 @@
 <a id="topo"></a>
 
-# MSGraphClient — Camada de abstração MSAL para Microsoft Graph e SharePoint
+# MSGraphClient
+## Uma camada de abstração MSAL para uso do SharePoint
 
-Uma biblioteca Python para abstrair fluxos de autenticação com **MSAL** e simplificar
-a integração com **Microsoft Graph API** em aplicações desktop e mobile.
+MSGraphClient é uma biblioteca Python para abstrair fluxos de autenticação com **MSAL** e simplificar
+a integração de aplicações desktop e mobile com o SharePoint Online via **Microsoft Graph API**. O foco é fornecer uma experiência de desenvolvimento fluida, com configuração centralizada, mensagens localizadas e operações de alto nível.
+
 As operações cobertas incluem gerenciamento de biblioteca de documentos (drive)
 e manipulação de listas do SharePoint.
 
@@ -103,13 +105,6 @@ Este repositório apresenta a seguinte organização:
 		<li><code>setup_portal.md</code>: configuracao manual no portal do Azure</li>
 		<li><code>setup_delegated_auth.md</code>: orientacoes para autenticacao delegada com usuario</li>
 		<li><code>bulk_create_apps.md</code>: detalhes do processo de provisionamento em lote</li>
-	</ul>
-</details>
-
-<details>
-	<summary><strong>downloads/</strong>: artefatos locais de teste (diretorio ignorado no git)</summary>
-	<ul>
-		<li>Armazena downloads, uploads de teste e arquivos temporarios gerados nas validacoes</li>
 	</ul>
 </details>
 
