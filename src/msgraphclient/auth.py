@@ -188,66 +188,68 @@ class GraphAuthenticator:
         return os.path.join(os.getcwd(), ".env")
 
     def _validate_credentials(self) -> None:
-        """Validate that required credentials are present for the selected mode."""
+        """Validate that required credentials are present for the selected mode.
+
+        Checks both constructor arguments and environment variables.
+        Produces a single error message listing all missing items.
+        """
         env_path = self._env_file_location()
         docs_url = "https://github.com/FSLobao/MSGraphClient/wiki/Configuration"
         repo_url = "https://github.com/FSLobao/MSGraphClient"
 
-        if self.auth_mode == "delegated":
-            missing = [
-                v
-                for v, val in [
-                    ("AZURE_TENANT_ID", self.tenant_id),
-                    ("AZURE_CLIENT_ID", self.client_id),
-                ]
-                if not val
-            ]
-            if missing:
-                raise EnvironmentError(
-                    f"Variáveis de ambiente não encontradas: {', '.join(missing)}\n"
-                    f"\n"
-                    f"O modo delegado requer configuração adicional além das\n"
-                    f"credenciais básicas (redirect URI, scopes, login mode).\n"
-                    f"Consulte a documentação e o repositório da biblioteca:\n"
-                    f"\n"
-                    f"  Docs: {docs_url}\n"
-                    f"  Repo: {repo_url}\n"
+        # Check each required variable (argument OR environment)
+        required = [
+            (
+                "AZURE_TENANT_ID",
+                self.tenant_id or os.environ.get("AZURE_TENANT_ID", ""),
+            ),
+            (
+                "AZURE_CLIENT_ID",
+                self.client_id or os.environ.get("AZURE_CLIENT_ID", ""),
+            ),
+            (
+                "SHAREPOINT_SITE_ID",
+                self.sharepoint_site_id or os.environ.get("SHAREPOINT_SITE_ID", ""),
+            ),
+        ]
+
+        if self.auth_mode == "client_credentials":
+            required.append(
+                (
+                    "AZURE_CLIENT_SECRET",
+                    self.client_secret or os.environ.get("AZURE_CLIENT_SECRET", ""),
                 )
-            if self.delegated_login_mode not in ("interactive", "device_code"):
-                raise EnvironmentError(
-                    "GRAPH_DELEGATED_LOGIN_MODE must be 'interactive' or 'device_code'"
-                )
+            )
+
+        missing = [name for name, value in required if not value]
+
+        if not missing:
+            if self.auth_mode == "delegated":
+                if self.delegated_login_mode not in ("interactive", "device_code"):
+                    raise EnvironmentError(
+                        "GRAPH_DELEGATED_LOGIN_MODE must be 'interactive' or 'device_code'"
+                    )
             return
 
-        missing = [
-            v
-            for v, val in [
-                ("AZURE_TENANT_ID", self.tenant_id),
-                ("AZURE_CLIENT_ID", self.client_id),
-                ("AZURE_CLIENT_SECRET", self.client_secret),
-            ]
-            if not val
-        ]
-        if missing:
-            raise EnvironmentError(
-                f"Variáveis de ambiente não encontradas: {', '.join(missing)}\n"
-                f"\n"
-                f"Crie um arquivo .env no diretório do seu projeto:\n"
-                f"  {env_path}\n"
-                f"\n"
-                f"Exemplo mínimo para autenticação client_credentials:\n"
-                f"\n"
-                f"  AZURE_TENANT_ID=seu-tenant-id\n"
-                f"  AZURE_CLIENT_ID=seu-client-id\n"
-                f"  AZURE_CLIENT_SECRET=seu-client-secret\n"
-                f"  SHAREPOINT_SITE_ID=seu-site-id\n"
-                f"\n"
-                f"Para autenticação em modo delegado, variáveis adicionais\n"
-                f"são necessárias. Consulte a documentação e o repositório:\n"
-                f"\n"
-                f"  Docs: {docs_url}\n"
-                f"  Repo: {repo_url}\n"
-            )
+        raise EnvironmentError(
+            f"Variáveis não encontradas (argumento ou ambiente): {', '.join(missing)}\n"
+            f"\n"
+            f"Crie um arquivo .env no diretório do seu projeto:\n"
+            f"  {env_path}\n"
+            f"\n"
+            f"Exemplo mínimo para autenticação client_credentials:\n"
+            f"\n"
+            f"  AZURE_TENANT_ID=seu-tenant-id\n"
+            f"  AZURE_CLIENT_ID=seu-client-id\n"
+            f"  AZURE_CLIENT_SECRET=seu-client-secret\n"
+            f"  SHAREPOINT_SITE_ID=seu-site-id\n"
+            f"\n"
+            f"Para autenticação em modo delegado, AZURE_CLIENT_SECRET não é\n"
+            f"necessário. Consulte a documentação e o repositório:\n"
+            f"\n"
+            f"  Docs: {docs_url}\n"
+            f"  Repo: {repo_url}\n"
+        )
 
     def _acquire_token(self) -> str:
         """Acquire and return a Graph API bearer token for the selected mode."""
@@ -377,7 +379,7 @@ class GraphAuthenticator:
         _success_html = (
             "<html><body style='font-family:sans-serif;display:flex;align-items:center;"
             "justify-content:center;height:100vh;margin:0'>"
-            "<p>Authentication complete. This window will close automatically.</p>"
+            "<p>Autenticação realizada. Pode fechar esta janela.</p>"
             "<script>window.onload=function(){"
             "window.open('','_self','');window.close();};</script>"
             "</body></html>"

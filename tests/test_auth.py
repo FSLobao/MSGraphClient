@@ -28,13 +28,16 @@ def test_graph_client_uses_msal_token(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("AZURE_TENANT_ID", "tenant-id")
     monkeypatch.setenv("AZURE_CLIENT_ID", "client-id")
     monkeypatch.setenv("AZURE_CLIENT_SECRET", "client-secret")
-    monkeypatch.delenv("SHAREPOINT_SITE_ID", raising=False)
+    monkeypatch.setenv("SHAREPOINT_SITE_ID", "site-id")
 
     fake_result = {"access_token": "fake-token-abc"}
     mock_app = MagicMock()
     mock_app.acquire_token_for_client.return_value = fake_result
 
-    with patch.object(msal, "ConfidentialClientApplication", return_value=mock_app):
+    with (
+        patch.object(msal, "ConfidentialClientApplication", return_value=mock_app),
+        patch.object(auth_mod.GraphClient, "_load_site_info"),
+    ):
         client = auth_mod.GraphClient()
 
     assert client._token == "fake-token-abc"
@@ -102,14 +105,17 @@ def test_graph_client_uses_delegated_mode(monkeypatch: pytest.MonkeyPatch) -> No
     monkeypatch.setenv("AZURE_CLIENT_ID", "client-id")
     monkeypatch.setenv("GRAPH_AUTH_MODE", "delegated")
     monkeypatch.setenv("GRAPH_DELEGATED_LOGIN_MODE", "interactive")
+    monkeypatch.setenv("SHAREPOINT_SITE_ID", "site-id")
     monkeypatch.delenv("AZURE_CLIENT_SECRET", raising=False)
-    monkeypatch.delenv("SHAREPOINT_SITE_ID", raising=False)
 
     fake_result = {"access_token": "delegated-token-abc"}
     mock_app = MagicMock()
     mock_app.acquire_token_interactive.return_value = fake_result
 
-    with patch.object(msal, "PublicClientApplication", return_value=mock_app):
+    with (
+        patch.object(msal, "PublicClientApplication", return_value=mock_app),
+        patch.object(auth_mod.GraphClient, "_load_site_info"),
+    ):
         client = auth_mod.GraphClient(auth_mode="delegated")
 
     assert client._token == "delegated-token-abc"
@@ -128,6 +134,40 @@ def test_graph_client_delegated_mode_requires_env(
 
     with pytest.raises(EnvironmentError, match="AZURE_TENANT_ID"):
         auth_mod.GraphClient(auth_mode="delegated")
+
+
+def test_graph_client_credentials_requires_secret(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """client_credentials mode requires AZURE_CLIENT_SECRET in addition to common vars."""
+    monkeypatch.setenv("AZURE_TENANT_ID", "tenant-id")
+    monkeypatch.setenv("AZURE_CLIENT_ID", "client-id")
+    monkeypatch.delenv("AZURE_CLIENT_SECRET", raising=False)
+
+    with pytest.raises(EnvironmentError, match="AZURE_CLIENT_SECRET"):
+        auth_mod.GraphClient()
+
+
+def test_graph_delegated_does_not_require_secret(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Delegated mode should NOT require AZURE_CLIENT_SECRET."""
+    monkeypatch.setenv("AZURE_TENANT_ID", "tenant-id")
+    monkeypatch.setenv("AZURE_CLIENT_ID", "client-id")
+    monkeypatch.setenv("SHAREPOINT_SITE_ID", "site-id")
+    monkeypatch.delenv("AZURE_CLIENT_SECRET", raising=False)
+
+    fake_result = {"access_token": "delegated-no-secret"}
+    mock_app = MagicMock()
+    mock_app.acquire_token_interactive.return_value = fake_result
+
+    with (
+        patch.object(msal, "PublicClientApplication", return_value=mock_app),
+        patch.object(auth_mod.GraphClient, "_load_site_info"),
+    ):
+        client = auth_mod.GraphClient(auth_mode="delegated")
+
+    assert client._token == "delegated-no-secret"
 
 
 def test_graph_authenticator_explicit_credentials() -> None:
