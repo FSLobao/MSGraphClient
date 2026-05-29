@@ -1,0 +1,16 @@
+{
+    "missing_credentials_header": "Missing configuration values (argument or environment): {missing}",
+    "missing_credentials_instructions": "Create a .env file in your project root:\n  {env_path}",
+    "missing_credentials_app_only": "Minimum example for client_credentials authentication:\n\n  AZURE_TENANT_ID=your-tenant-id\n  AZURE_CLIENT_ID=your-client-id\n  AZURE_CLIENT_SECRET=your-client-secret\n  SHAREPOINT_SITE_ID=your-site-id",
+    "missing_credentials_delegated": "For delegated authentication, AZURE_CLIENT_SECRET is not required.",
+    "missing_credentials_footer": "Docs: {docs_url}\n  Repo: {repo_url}",
+    "invalid_delegated_login_mode": "GRAPH_DELEGATED_LOGIN_MODE must be 'interactive' or 'device_code'",
+    "unsupported_graph_auth_mode": "Unsupported GRAPH_AUTH_MODE. Use 'client_credentials' or 'delegated'.",
+    "invalid_msal_response": "Failed to acquire token: invalid response from MSAL",
+    "invalid_delegated_msal_response": "Failed to acquire delegated token: invalid response from MSAL",
+    "token_acquire_failed": "Failed to acquire token: {error} - {description}",
+    "delegated_token_acquire_failed": "Failed to acquire delegated token: {error} - {description}",
+    "device_code_prompt": "Complete device authentication to continue.",
+    "auth_success_html_text": "Authentication completed. You may close this window",
+    "no_valid_token": "No valid token available. Ensure credentials are configured so GraphAuthenticator can acquire a token."
+}

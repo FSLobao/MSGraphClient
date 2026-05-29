@@ -1,0 +1,16 @@
+{
+    "missing_credentials_header": "Valores de configuracao ausentes (argumento ou ambiente): {missing}",
+    "missing_credentials_instructions": "Crie um arquivo .env na raiz do seu projeto:\n  {env_path}",
+    "missing_credentials_app_only": "Exemplo minimo para autenticacao client_credentials:\n\n  AZURE_TENANT_ID=seu-tenant-id\n  AZURE_CLIENT_ID=seu-client-id\n  AZURE_CLIENT_SECRET=seu-client-secret\n  SHAREPOINT_SITE_ID=seu-site-id",
+    "missing_credentials_delegated": "Para autenticacao delegada, AZURE_CLIENT_SECRET nao e necessario.",
+    "missing_credentials_footer": "Docs: {docs_url}\n  Repo: {repo_url}",
+    "invalid_delegated_login_mode": "GRAPH_DELEGATED_LOGIN_MODE deve ser 'interactive' ou 'device_code'",
+    "unsupported_graph_auth_mode": "GRAPH_AUTH_MODE nao suportado. Use 'client_credentials' ou 'delegated'.",
+    "invalid_msal_response": "Falha ao obter token: resposta invalida do MSAL",
+    "invalid_delegated_msal_response": "Falha ao obter token delegado: resposta invalida do MSAL",
+    "token_acquire_failed": "Falha ao obter token: {error} - {description}",
+    "delegated_token_acquire_failed": "Falha ao obter token delegado: {error} - {description}",
+    "device_code_prompt": "Conclua a autenticacao por codigo de dispositivo para continuar.",
+    "auth_success_html_text": "Autenticacao concluida. Voce pode fechar esta janela",
+    "no_valid_token": "Nenhum token valido disponivel. Garanta que as credenciais estejam configuradas para que o GraphAuthenticator possa obter um token."
+}

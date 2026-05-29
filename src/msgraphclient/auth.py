@@ -5,7 +5,7 @@ Supports two authentication modes:
 - delegated (user-interactive)
 
 Credentials are received as explicit parameters (environment reading is
-handled by :class:`python.client.GraphClient`).
+handled by :class:`msgraphclient.client.GraphClient`).
 """
 
 import os
@@ -13,18 +13,12 @@ import os
 import msal
 
 from msgraphclient.client import GraphAuthorizationError, GraphClient  # noqa: F401
-
-GRAPH_SCOPES = ["https://graph.microsoft.com/.default"]
-DEFAULT_GRAPH_AUTH_MODE = "client_credentials"
-# Reserved OIDC scopes (openid, profile, offline_access) are added automatically
-# by MSAL for interactive and device_code flows. Passing them explicitly raises
-# a ValueError, so they must not appear in the scopes list we submit.
-_MSAL_RESERVED_SCOPES: frozenset[str] = frozenset(
-    ["openid", "profile", "offline_access"]
+from msgraphclient.messages import get_messages
+from msgraphclient.settings import (
+    GRAPH_DEFAULTS,
+    GraphSettings,
+    parse_popup_size,
 )
-DELEGATED_GRAPH_SCOPES = [
-    "https://graph.microsoft.com/Sites.Selected",
-]
 
 # Public API exported by this module.
 # GraphAuthorizationError and GraphClient are re-exported from msgraphclient.client.
@@ -65,7 +59,10 @@ def _save_token_cache(cache: "msal.SerializableTokenCache") -> None:
         pass
 
 
-def _find_chromium_app_browser(name: str = "_msal_popup") -> str | None:
+def _find_chromium_app_browser(
+    name: str = "_msal_popup",
+    popup_size: str = GRAPH_DEFAULTS.auth_popup_size,
+) -> str | None:
     """Register a Chromium-based browser in app mode (no address bar or tabs).
 
     Tries Microsoft Edge then Google Chrome on Windows. When found, registers
@@ -89,11 +86,7 @@ def _find_chromium_app_browser(name: str = "_msal_popup") -> str | None:
     """
     import webbrowser
 
-    raw_size = os.environ.get("GRAPH_AUTH_POPUP_SIZE", "520x680")
-    try:
-        _w, _h = (int(p) for p in raw_size.lower().replace(",", "x").split("x", 1))
-    except (ValueError, TypeError):
-        _w, _h = 520, 680
+    _w, _h = parse_popup_size(popup_size)
 
     popup_profile = os.path.join(
         os.environ.get("LOCALAPPDATA") or os.path.expanduser("~"),
@@ -159,22 +152,34 @@ class GraphAuthenticator:
         redirect_uri: str = "http://localhost",
         delegated_scopes: list[str] | None = None,
         delegated_login_mode: str = "interactive",
+        auth_popup_size: str = GRAPH_DEFAULTS.auth_popup_size,
+        message_locale: str | None = None,
         token: str | None = None,
         sharepoint_site_id: str = "",
     ) -> None:
-        self.tenant_id: str = tenant_id
-        self.client_id: str = client_id
-        self.client_secret: str = client_secret
-        self.redirect_uri: str = redirect_uri
-        self.delegated_scopes: list[str] = (
-            delegated_scopes or DELEGATED_GRAPH_SCOPES.copy()
+        settings = GraphSettings.from_sources(
+            tenant_id=tenant_id,
+            client_id=client_id,
+            client_secret=client_secret,
+            sharepoint_site_id=sharepoint_site_id,
+            auth_mode=auth_mode,
+            redirect_uri=redirect_uri,
+            delegated_scopes=delegated_scopes,
+            delegated_login_mode=delegated_login_mode,
+            auth_popup_size=auth_popup_size,
         )
-        self.delegated_login_mode: str = (
-            delegated_login_mode.strip().lower().replace("-", "_")
-        )
+
+        self.tenant_id: str = settings.tenant_id
+        self.client_id: str = settings.client_id
+        self.client_secret: str = settings.client_secret
+        self.redirect_uri: str = settings.redirect_uri
+        self.delegated_scopes: list[str] = list(settings.delegated_scopes)
+        self.delegated_login_mode: str = settings.delegated_login_mode
+        self.auth_popup_size: str = settings.auth_popup_size
         self.token: str = ""
-        self.sharepoint_site_id: str = sharepoint_site_id
-        self.auth_mode = self._resolve_auth_mode(auth_mode)
+        self.sharepoint_site_id: str = settings.sharepoint_site_id
+        self.auth_mode = settings.auth_mode
+        self.messages = get_messages(message_locale)
 
         if token:
             self.token = token
@@ -226,29 +231,18 @@ class GraphAuthenticator:
         if not missing:
             if self.auth_mode == "delegated":
                 if self.delegated_login_mode not in ("interactive", "device_code"):
-                    raise EnvironmentError(
-                        "GRAPH_DELEGATED_LOGIN_MODE must be 'interactive' or 'device_code'"
-                    )
+                    raise EnvironmentError(self.messages.invalid_delegated_login_mode)
             return
 
         raise EnvironmentError(
-            f"Variáveis não encontradas (argumento ou ambiente): {', '.join(missing)}\n"
+            f"{self.messages.missing_credentials_header.format(missing=', '.join(missing))}\n"
             f"\n"
-            f"Crie um arquivo .env no diretório do seu projeto:\n"
-            f"  {env_path}\n"
+            f"{self.messages.missing_credentials_instructions.format(env_path=env_path)}\n"
             f"\n"
-            f"Exemplo mínimo para autenticação client_credentials:\n"
+            f"{self.messages.missing_credentials_app_only}\n"
             f"\n"
-            f"  AZURE_TENANT_ID=seu-tenant-id\n"
-            f"  AZURE_CLIENT_ID=seu-client-id\n"
-            f"  AZURE_CLIENT_SECRET=seu-client-secret\n"
-            f"  SHAREPOINT_SITE_ID=seu-site-id\n"
-            f"\n"
-            f"Para autenticação em modo delegado, AZURE_CLIENT_SECRET não é\n"
-            f"necessário. Consulte a documentação e o repositório:\n"
-            f"\n"
-            f"  Docs: {docs_url}\n"
-            f"  Repo: {repo_url}\n"
+            f"{self.messages.missing_credentials_delegated}\n"
+            f"{self.messages.missing_credentials_footer.format(docs_url=docs_url, repo_url=repo_url)}\n"
         )
 
     def _acquire_token(self) -> str:
@@ -266,12 +260,16 @@ class GraphAuthenticator:
         )
 
         if not isinstance(result, dict):
-            raise RuntimeError("Failed to acquire token: invalid response from MSAL")
+            raise RuntimeError(self.messages.invalid_msal_response)
 
         if "access_token" not in result:
             error = result.get("error", "unknown")
             description = result.get("error_description", "")
-            raise RuntimeError(f"Failed to acquire token: {error} - {description}")
+            raise RuntimeError(
+                self.messages.token_acquire_failed.format(
+                    error=error, description=description
+                )
+            )
 
         return result["access_token"]
 
@@ -286,21 +284,21 @@ class GraphAuthenticator:
         )
 
         if not isinstance(result, dict):
-            raise RuntimeError(
-                "Failed to acquire delegated token: invalid response from MSAL"
-            )
+            raise RuntimeError(self.messages.invalid_delegated_msal_response)
 
         if "access_token" not in result:
             error = result.get("error", "unknown")
             description = result.get("error_description", "")
             raise RuntimeError(
-                f"Failed to acquire delegated token: {error} - {description}"
+                self.messages.delegated_token_acquire_failed.format(
+                    error=error, description=description
+                )
             )
 
         return result["access_token"]
 
-    @staticmethod
     def _acquire_access_token_result(
+        self,
         tenant_id: str,
         client_id: str,
         client_secret: str,
@@ -312,11 +310,11 @@ class GraphAuthenticator:
             client_credential=client_secret,
             authority=authority,
         )
-        result = app.acquire_token_for_client(scopes=GRAPH_SCOPES)
+        result = app.acquire_token_for_client(scopes=GRAPH_DEFAULTS.graph_scopes)
         return result if isinstance(result, dict) else None
 
-    @staticmethod
     def _acquire_access_token_result_delegated(
+        self,
         tenant_id: str,
         client_id: str,
         scopes: list[str],
@@ -356,7 +354,7 @@ class GraphAuthenticator:
             flow = app.initiate_device_flow(scopes=scopes)
             if "user_code" not in flow:
                 return flow if isinstance(flow, dict) else None
-            print(flow.get("message", "Complete device authentication to continue."))
+            print(flow.get("message", self.messages.device_code_prompt))
             result = app.acquire_token_by_device_flow(flow)
             _save_token_cache(cache)
             return result if isinstance(result, dict) else None
@@ -379,12 +377,12 @@ class GraphAuthenticator:
         _success_html = (
             "<html><body style='font-family:sans-serif;display:flex;align-items:center;"
             "justify-content:center;height:100vh;margin:0'>"
-            "<p>Authentication completed. You may close this window</p>"
+            f"<p>{self.messages.auth_success_html_text}</p>"
             "<script>window.onload=function(){"
             "window.open('','_self','');window.close();};</script>"
             "</body></html>"
         )
-        popup_name = _find_chromium_app_browser()
+        popup_name = _find_chromium_app_browser(popup_size=self.auth_popup_size)
         if popup_name:
             _orig = _msal_app._preferred_browser
             _msal_app._preferred_browser = lambda: popup_name
@@ -401,38 +399,3 @@ class GraphAuthenticator:
 
         _save_token_cache(cache)
         return result if isinstance(result, dict) else None
-
-    @staticmethod
-    def _resolve_auth_mode(auth_mode: str | None) -> str:
-        """Validate and normalize auth mode string."""
-        resolved = auth_mode or DEFAULT_GRAPH_AUTH_MODE
-        normalized = resolved.strip().lower().replace("-", "_")
-
-        mode = normalized
-        if mode not in ("client_credentials", "delegated"):
-            raise ValueError(
-                "Unsupported GRAPH_AUTH_MODE. Use 'client_credentials' or 'delegated'."
-            )
-        return mode
-
-    @staticmethod
-    def _parse_delegated_scopes(raw_scopes: str) -> list[str]:
-        """Parse delegated scopes from env value or fallback to defaults.
-
-        Reserved OIDC scopes (openid, profile, offline_access) are silently
-        dropped because MSAL adds them automatically; passing them explicitly
-        raises a ValueError.
-        """
-        if not raw_scopes.strip():
-            return DELEGATED_GRAPH_SCOPES.copy()
-
-        scope_values = []
-        for part in raw_scopes.replace(",", " ").split():
-            value = part.strip()
-            if (
-                value
-                and value not in scope_values
-                and value not in _MSAL_RESERVED_SCOPES
-            ):
-                scope_values.append(value)
-        return scope_values or DELEGATED_GRAPH_SCOPES.copy()

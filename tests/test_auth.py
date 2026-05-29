@@ -5,6 +5,8 @@ import msal
 from unittest.mock import MagicMock, patch
 
 import msgraphclient.auth as auth_mod
+from msgraphclient.messages import EN_MESSAGES, get_messages
+from msgraphclient.settings import GRAPH_DEFAULTS, GraphSettings
 
 
 @pytest.fixture(autouse=True)
@@ -343,3 +345,71 @@ def test_graph_authenticator_delegated_device_code_invalid_scope() -> None:
                 delegated_login_mode="device_code",
                 delegated_scopes=["bad.scope"],
             )
+
+
+def test_graph_settings_resolves_defaults_and_overrides(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """GraphSettings should centralize defaults and environment overrides."""
+    monkeypatch.setenv("GRAPH_AUTH_MODE", "delegated")
+    monkeypatch.setenv("AZURE_REDIRECT_URI", "http://localhost:8000")
+    monkeypatch.setenv("GRAPH_DELEGATED_LOGIN_MODE", "device_code")
+    monkeypatch.setenv("GRAPH_DELEGATED_SCOPES", "scope.one, scope.two openid profile")
+    monkeypatch.setenv("GRAPH_AUTH_POPUP_SIZE", "640x720")
+
+    settings = GraphSettings.from_sources(
+        tenant_id="tenant-id",
+        client_id="client-id",
+        sharepoint_site_id="site-id",
+    )
+
+    assert settings.auth_mode == "delegated"
+    assert settings.redirect_uri == "http://localhost:8000"
+    assert settings.delegated_login_mode == "device_code"
+    assert settings.delegated_scopes == ("scope.one", "scope.two")
+    assert settings.auth_popup_size == "640x720"
+    assert (
+        settings.auth_mode == GRAPH_DEFAULTS.auth_mode
+        or settings.auth_mode == "delegated"
+    )
+
+
+def test_get_messages_defaults_to_english() -> None:
+    """Localized message resolution should default to the English bundle."""
+    messages = get_messages()
+
+    assert messages == EN_MESSAGES
+    assert (
+        messages.auth_success_html_text
+        == "Authentication completed. You may close this window"
+    )
+
+
+def test_get_messages_loads_portuguese_bundle() -> None:
+    """Portuguese bundle should be returned when pt locale is requested."""
+    messages = get_messages("pt")
+
+    assert (
+        messages.auth_success_html_text
+        == "Autenticacao concluida. Voce pode fechar esta janela"
+    )
+    assert (
+        messages.invalid_msal_response
+        == "Falha ao obter token: resposta invalida do MSAL"
+    )
+
+
+def test_get_messages_normalizes_regional_locale() -> None:
+    """Regional locale tags should map to the base language bundle."""
+    messages = get_messages("pt-BR")
+
+    assert messages.missing_credentials_header.startswith(
+        "Valores de configuracao ausentes"
+    )
+
+
+def test_get_messages_unknown_locale_falls_back_to_english() -> None:
+    """Unsupported locales should fall back to the English message bundle."""
+    messages = get_messages("fr")
+
+    assert messages == EN_MESSAGES

@@ -18,7 +18,10 @@ load_dotenv()
 if TYPE_CHECKING:
     from msgraphclient.auth import GraphAuthenticator
 
-GRAPH_BASE_URL = "https://graph.microsoft.com/v1.0"
+from msgraphclient.messages import get_messages
+from msgraphclient.settings import GRAPH_DEFAULTS, GraphSettings
+
+GRAPH_BASE_URL = GRAPH_DEFAULTS.graph_api_base_url
 
 __all__ = ["GraphAuthorizationError", "GraphClient"]
 
@@ -117,6 +120,7 @@ class GraphClient:
         authenticator: GraphAuthenticator | None = None,
         sharepoint_site_id: str | None = None,
         auth_mode: str | None = None,
+        message_locale: str | None = None,
     ) -> None:
         """Initialize Graph client and ensure an attached GraphAuthenticator.
 
@@ -129,40 +133,42 @@ class GraphClient:
         # Lazy import breaks the circular dependency with msgraphclient.auth.
         from msgraphclient.auth import GraphAuthenticator as _GraphAuthenticator
 
+        self.messages = get_messages(message_locale)
+
         if authenticator is None:
-            tenant_id = os.environ.get("AZURE_TENANT_ID", "")
-            client_id = os.environ.get("AZURE_CLIENT_ID", "")
-            client_secret = os.environ.get("AZURE_CLIENT_SECRET", "")
-            redirect_uri = os.environ.get("AZURE_REDIRECT_URI", "http://localhost")
-            delegated_login_mode = os.environ.get(
-                "GRAPH_DELEGATED_LOGIN_MODE", "interactive"
-            )
-            delegated_scopes_raw = os.environ.get("GRAPH_DELEGATED_SCOPES", "")
-            resolved_auth_mode = auth_mode or os.environ.get(
-                "GRAPH_AUTH_MODE", "client_credentials"
+            resolved_settings = GraphSettings.from_sources(
+                tenant_id=os.environ.get("AZURE_TENANT_ID", ""),
+                client_id=os.environ.get("AZURE_CLIENT_ID", ""),
+                client_secret=os.environ.get("AZURE_CLIENT_SECRET", ""),
+                sharepoint_site_id=(
+                    sharepoint_site_id or os.environ.get("SHAREPOINT_SITE_ID", "")
+                ),
+                auth_mode=auth_mode,
+                redirect_uri=os.environ.get("AZURE_REDIRECT_URI"),
+                delegated_scopes_raw=os.environ.get("GRAPH_DELEGATED_SCOPES", ""),
+                delegated_login_mode=os.environ.get("GRAPH_DELEGATED_LOGIN_MODE"),
+                auth_popup_size=os.environ.get("GRAPH_AUTH_POPUP_SIZE"),
             )
 
             self.authenticator = _GraphAuthenticator(
-                tenant_id=tenant_id,
-                client_id=client_id,
-                client_secret=client_secret,
-                auth_mode=resolved_auth_mode,
-                redirect_uri=redirect_uri,
-                delegated_scopes=_GraphAuthenticator._parse_delegated_scopes(
-                    delegated_scopes_raw
-                ),
-                delegated_login_mode=delegated_login_mode,
+                tenant_id=resolved_settings.tenant_id,
+                client_id=resolved_settings.client_id,
+                client_secret=resolved_settings.client_secret,
+                auth_mode=resolved_settings.auth_mode,
+                redirect_uri=resolved_settings.redirect_uri,
+                delegated_scopes=list(resolved_settings.delegated_scopes),
+                delegated_login_mode=resolved_settings.delegated_login_mode,
+                auth_popup_size=resolved_settings.auth_popup_size,
+                message_locale=message_locale,
                 token=token,
+                sharepoint_site_id=resolved_settings.sharepoint_site_id,
             )
         else:
             self.authenticator = authenticator
 
         self._token: str = token or self.authenticator.token
         if not self._token:
-            raise RuntimeError(
-                "No valid token available. Ensure credentials are configured "
-                "so GraphAuthenticator can acquire a token."
-            )
+            raise RuntimeError(self.messages.no_valid_token)
         self.authenticator.token = self._token
 
         self._session = requests.Session()

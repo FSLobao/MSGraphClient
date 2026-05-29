@@ -172,6 +172,7 @@ Variáveis opcionais (possuem valor default):
 | `AZURE_REDIRECT_URI` | `http://localhost` | URI de redirecionamento para login interativo em modo `delegated` |
 | `GRAPH_DELEGATED_LOGIN_MODE` | `interactive` | `interactive` (browser local) ou `device_code` |
 | `GRAPH_DELEGATED_SCOPES` | `Sites.Selected` | Escopos delegados (separados por espaço ou vírgula) |
+| `GRAPH_LOCALE` | `en` | Locale usado para mensagens apresentadas ao usuário (`en` ou `pt`) |
 | `GRAPH_AUTH_POPUP_SIZE` | `520x680` | Tamanho da janela de login (formato `WxH`) |
 | `SHAREPOINT_DRIVE_ID` | — | ID da biblioteca de documentos (necessário para `GraphDrive`) |
 | `SHAREPOINT_LIST_ID` | — | ID da lista SharePoint (necessário para `GraphList`) |
