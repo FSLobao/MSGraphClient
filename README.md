@@ -78,8 +78,7 @@ Este repositório apresenta a seguinte organização:
 <details>
 	<summary><strong>examples/</strong>: scripts de referencia para execucao rapida por caso de uso</summary>
 	<ul>
-		<li><code>example_site_contents.py</code>: demonstra consulta de conteudo do site (drives e lists)</li>
-		<li><code>example_delegated_site_contents.py</code>: mesmo fluxo com autenticacao delegada</li>
+		<li><code>example_site_contents.py</code>: demonstra consulta de conteudo do site (drives e lists) e exibe atributos de autenticacao para os modos client_credentials e delegated</li>
 		<li><code>example_drive_list.py</code>: demonstra listagem de itens no drive do site</li>
 		<li><code>example_drive_download.py</code>: exemplo de download de arquivo remoto para disco local</li>
 		<li><code>example_drive_upload.py</code>: exemplo de upload de arquivo local para o SharePoint</li>
@@ -109,7 +108,7 @@ Este repositório apresenta a seguinte organização:
 </details>
 
 <ul>
-	<li><code>.env.example</code>: modelo de configuracao de ambiente para armazenamento de tokens e senhas</li>
+	<li><code>.env.example</code>: modelo de configuracao de ambiente para IDs, segredos e opcoes de execucao</li>
 	<li><code>pyproject.toml</code>: manifesto do projeto com dependencias, metadados e configuracoes de ferramentas</li>
 	<li><code>LICENSE</code>: termos de licenciamento do repositorio sob GPL v3.0</li>
 </ul>
@@ -187,6 +186,9 @@ Consulte [`.env.example`](.env.example) para um modelo completo com explicaçõe
 
 - **`client_credentials`**: indicado para automação sem interação do usuário.
 - **`delegated`**: indicado quando é necessário associar as ações a um usuário autenticado.
+
+No fluxo `delegated`, o cache de token é mantido apenas em memória durante a execução do processo.
+Ao encerrar o processo, uma nova autenticação pode ser necessária na próxima execução.
 
 Nos dois casos, o projeto usa `Sites.Selected` e exige inscrição explícita do site.
 No fluxo `delegated`, o acesso efetivo é a interseção entre a concessão do aplicativo

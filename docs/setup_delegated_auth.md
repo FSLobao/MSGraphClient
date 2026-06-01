@@ -148,8 +148,12 @@ SHAREPOINT_SITE_ID=contoso.sharepoint.com,<site-guid>,<web-guid>
 Depois, execute um exemplo usando a API class-based:
 
 ```bash
-uv run examples/example_delegated_site_contents.py
+uv run examples/example_site_contents.py
 ```
+
+Esse exemplo funciona tanto com `GRAPH_AUTH_MODE=delegated` quanto com
+`GRAPH_AUTH_MODE=client_credentials`. No modo delegado, ele tambem mostra
+atributos do usuario autenticado, sem exibir tokens.
 
 Você também pode usar o modo `device_code` (útil em ambientes sem interface gráfica,
 como servidores remotos ou containers):

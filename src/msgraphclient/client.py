@@ -18,8 +18,11 @@ load_dotenv()
 if TYPE_CHECKING:
     from msgraphclient.auth import GraphAuthenticator
 
-from msgraphclient.messages import get_messages
-from msgraphclient.settings import GRAPH_DEFAULTS, GraphSettings
+# Must run before settings import because settings may read env vars at import time.
+load_dotenv()
+
+from msgraphclient.messages import get_messages  # noqa: E402
+from msgraphclient.settings import GRAPH_DEFAULTS, GraphSettings  # noqa: E402
 
 GRAPH_BASE_URL = GRAPH_DEFAULTS.graph_api_base_url
 

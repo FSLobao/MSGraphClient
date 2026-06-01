@@ -25,38 +25,9 @@ from msgraphclient.settings import (
 __all__ = ["GraphAuthorizationError", "GraphClient", "GraphAuthenticator"]
 
 
-def _token_cache_path() -> str:
-    """Return the path for the persistent MSAL delegated token cache file."""
-    cache_dir = os.path.join(
-        os.environ.get("LOCALAPPDATA") or os.path.expanduser("~"),
-        "MSGraphClient",
-    )
-    os.makedirs(cache_dir, exist_ok=True)
-    return os.path.join(cache_dir, "token_cache.json")
-
-
 def _load_token_cache() -> "msal.SerializableTokenCache":
-    """Load the MSAL token cache from disk, returning an empty cache on error."""
-    cache = msal.SerializableTokenCache()
-    path = _token_cache_path()
-    if os.path.isfile(path):
-        try:
-            with open(path, "r", encoding="utf-8") as f:
-                cache.deserialize(f.read())
-        except (OSError, ValueError):
-            pass
-    return cache
-
-
-def _save_token_cache(cache: "msal.SerializableTokenCache") -> None:
-    """Persist the MSAL token cache to disk when its state has changed."""
-    if not cache.has_state_changed:
-        return
-    try:
-        with open(_token_cache_path(), "w", encoding="utf-8") as f:
-            f.write(cache.serialize())
-    except OSError:
-        pass
+    """Return an in-memory MSAL token cache for delegated authentication."""
+    return msal.SerializableTokenCache()
 
 
 def _find_chromium_app_browser(
@@ -74,8 +45,7 @@ def _find_chromium_app_browser(
     previously saved window geometry.  The ``--no-signin`` and
     ``--disable-sync`` flags suppress the browser's own account sign-in prompt
     on that profile.  Azure AD session state is managed through MSAL's
-    persistent token cache instead, so the browser is only opened on the first
-    call (or after a long token expiry).
+    in-memory token cache within the current process lifetime.
 
     Window size is read from the ``GRAPH_AUTH_POPUP_SIZE`` environment variable
     in ``WIDTHxHEIGHT`` format (e.g. ``"600x800"``). Falls back to ``520x680``
@@ -323,9 +293,8 @@ class GraphAuthenticator:
     ) -> dict | None:
         """Acquire token payload from Azure AD via delegated authentication.
 
-        Tokens are cached in ``%LOCALAPPDATA%\\MSGraphClient\\token_cache.json``
-        so the browser is only opened on the first call or after long expiry.
-        Subsequent calls are served silently from the cached refresh token.
+        Tokens are cached in memory only for the current process lifetime.
+        Subsequent calls in the same process can be served silently from cache.
 
         MSAL 1.x uses a ``port`` integer parameter (not ``redirect_uri``) for
         acquire_token_interactive.  The port is extracted from ``redirect_uri``
@@ -349,14 +318,12 @@ class GraphAuthenticator:
             if accounts:
                 result = app.acquire_token_silent(scopes, account=accounts[0])
                 if result and "access_token" in result:
-                    _save_token_cache(cache)
                     return result
             flow = app.initiate_device_flow(scopes=scopes)
             if "user_code" not in flow:
                 return flow if isinstance(flow, dict) else None
             print(flow.get("message", self.messages.device_code_prompt))
             result = app.acquire_token_by_device_flow(flow)
-            _save_token_cache(cache)
             return result if isinstance(result, dict) else None
 
         # Try silent first; fall back to interactive browser.
@@ -364,7 +331,6 @@ class GraphAuthenticator:
         if accounts:
             result = app.acquire_token_silent(scopes, account=accounts[0])
             if result and "access_token" in result:
-                _save_token_cache(cache)
                 return result
 
         parsed = urlparse(redirect_uri)
@@ -397,5 +363,4 @@ class GraphAuthenticator:
                 scopes=scopes, port=port, success_template=_success_html
             )
 
-        _save_token_cache(cache)
         return result if isinstance(result, dict) else None
