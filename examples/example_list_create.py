@@ -16,7 +16,7 @@ from typing import Any
 from msgraphclient.auth import GraphClient
 from msgraphclient.lists import GraphList
 
-from list_value_generation import random_number_from_validation
+from examples.list_value_generation import random_number_from_validation
 
 
 _EXCLUDED_INTERNAL_NAMES = {
