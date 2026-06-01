@@ -23,7 +23,11 @@ ITEM_ID: str = ""
 NUMBER_INCREMENT: float = 10.0
 
 
-def _build_typed_update(list_client: GraphList, current_item: dict[str, Any]) -> dict:
+def _build_typed_update(
+    list_client: GraphList,
+    current_item: dict[str, Any],
+    number_increment: float,
+) -> dict:
     """Build an update payload modifying all writable columns with supported types."""
     payload: dict[str, Any] = {}
     timestamp = datetime.now(timezone.utc)
@@ -48,9 +52,9 @@ def _build_typed_update(list_client: GraphList, current_item: dict[str, Any]) ->
             if isinstance(current_value, bool):
                 continue
             if isinstance(current_value, Real):
-                payload[display_name] = float(current_value) + NUMBER_INCREMENT
+                payload[display_name] = float(current_value) + number_increment
             else:
-                payload[display_name] = NUMBER_INCREMENT
+                payload[display_name] = number_increment
 
         elif field_type == "boolean":
             payload[display_name] = (
@@ -73,51 +77,107 @@ def _build_typed_update(list_client: GraphList, current_item: dict[str, Any]) ->
     return payload
 
 
-def main() -> None:
-    """Execute a typed point update on one existing list item."""
-    client = GraphClient()
-    list_id = os.environ["SHAREPOINT_LIST_ID"]
-    list_client = GraphList(list_id=list_id, client=client)
+def run_example_list_update(
+    client: GraphClient | None = None,
+    list_client: GraphList | None = None,
+    list_id: str | None = None,
+    item_id: str | None = None,
+    number_increment: float = NUMBER_INCREMENT,
+    show_output: bool = True,
+) -> dict[str, Any]:
+    """Execute a typed point update on one list item and return context."""
+    resolved_client = client or GraphClient()
+    resolved_list_client = list_client
+    if resolved_list_client is None:
+        resolved_list_id = list_id or os.environ["SHAREPOINT_LIST_ID"]
+        resolved_list_client = GraphList(
+            list_id=resolved_list_id, client=resolved_client
+        )
 
-    item_id = ITEM_ID
-    items_df = list_client.get_items_dataframe(include_id=True)
+    target_item_id = (item_id or ITEM_ID).strip()
+    items_df = resolved_list_client.get_items_dataframe(include_id=True)
 
     if items_df.empty:
-        print("No items found in the list.")
-        return
+        if show_output:
+            print("No items found in the list.")
+        return {
+            "client": resolved_client,
+            "authenticator": resolved_client.authenticator,
+            "list_client": resolved_list_client,
+            "item_id": "",
+            "typed_update": {},
+            "updated_item": None,
+            "success": False,
+        }
 
-    if not item_id:
-        print("No ITEM_ID set — fetching the first list item...")
-        item_id = str(items_df.iloc[0]["_id"])
-        print(f"  Using item ID: {item_id}")
+    if not target_item_id:
+        if show_output:
+            print("No ITEM_ID set - fetching the first list item...")
+        target_item_id = str(items_df.iloc[0]["_id"])
+        if show_output:
+            print(f"  Using item ID: {target_item_id}")
 
-    selected_items = items_df[items_df["_id"].astype(str) == item_id]
+    selected_items = items_df[items_df["_id"].astype(str) == target_item_id]
     if selected_items.empty:
-        print(f"Item with ID {item_id} was not found in the list.")
-        return
+        if show_output:
+            print(f"Item with ID {target_item_id} was not found in the list.")
+        return {
+            "client": resolved_client,
+            "authenticator": resolved_client.authenticator,
+            "list_client": resolved_list_client,
+            "item_id": target_item_id,
+            "typed_update": {},
+            "updated_item": None,
+            "success": False,
+        }
 
     raw_current_item = selected_items.iloc[0].to_dict()
     current_item: dict[str, Any] = {
         str(key): value for key, value in raw_current_item.items()
     }
 
-    typed_update = _build_typed_update(list_client, current_item)
+    typed_update = _build_typed_update(
+        resolved_list_client,
+        current_item,
+        number_increment=number_increment,
+    )
     if not typed_update:
-        print("No writable fields of supported types were found to update.")
-        return
+        if show_output:
+            print("No writable fields of supported types were found to update.")
+        return {
+            "client": resolved_client,
+            "authenticator": resolved_client.authenticator,
+            "list_client": resolved_list_client,
+            "item_id": target_item_id,
+            "typed_update": {},
+            "updated_item": None,
+            "success": False,
+        }
 
-    payload = {"_id": item_id, **typed_update}
+    payload = {"_id": target_item_id, **typed_update}
 
-    print(f"\nUpdating item {item_id} with typed payload:")
-    for key, value in typed_update.items():
-        print(f"  - {key}: {value}")
+    if show_output:
+        print(f"\nUpdating item {target_item_id} with typed payload:")
+        for key, value in typed_update.items():
+            print(f"  - {key}: {value}")
 
-    result = list_client.save_item(payload)
+    result = resolved_list_client.save_item(payload)
 
-    print("\nUpdate successful!")
-    print("  Saved item (display-name format):")
-    print(f"  {result}")
+    if show_output:
+        print("\nUpdate successful!")
+        print("  Saved item (display-name format):")
+        print(f"  {result}")
+
+    return {
+        "client": resolved_client,
+        "authenticator": resolved_client.authenticator,
+        "list_client": resolved_list_client,
+        "item_id": target_item_id,
+        "typed_update": typed_update,
+        "updated_item": result,
+        "success": True,
+    }
 
 
 if __name__ == "__main__":
-    main()
+    run_example_list_update(show_output=True)

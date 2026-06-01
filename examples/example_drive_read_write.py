@@ -8,6 +8,7 @@ Usage:
 """
 
 import os
+from typing import Any
 
 
 from msgraphclient.auth import GraphClient
@@ -19,36 +20,72 @@ ITEM_ID: str = os.getenv("DRIVE_ITEM_ID", "").strip()
 # ────────────────────────────────────────────────────────────────────────────
 
 
+def run_example_drive_read_write(
+    client: GraphClient | None = None,
+    drive: GraphDrive | None = None,
+    drive_id: str | None = None,
+    item_id: str | None = None,
+    append_suffix: str = "\n[Appended by python example]\n",
+    show_output: bool = True,
+) -> dict[str, Any]:
+    """Read, update, and re-read a text file, returning chainable context."""
+    resolved_client = client or GraphClient()
+    resolved_drive = drive
+    if resolved_drive is None:
+        resolved_drive_id = drive_id or os.environ["SHAREPOINT_DRIVE_ID"]
+        resolved_drive = GraphDrive(drive_id=resolved_drive_id, client=resolved_client)
+
+    target_item_id = (item_id or ITEM_ID).strip()
+    if not target_item_id:
+        if show_output:
+            print("Please set DRIVE_ITEM_ID in .env or pass item_id to the function.")
+        return {
+            "client": resolved_client,
+            "authenticator": resolved_client.authenticator,
+            "drive": resolved_drive,
+            "item_id": "",
+            "original_content": None,
+            "updated_content": None,
+            "write_result": None,
+            "success": False,
+        }
+
+    if show_output:
+        print(f"Reading content of item: {target_item_id}")
+    original = resolved_drive.read_file_content(target_item_id)
+    if show_output:
+        print("\n--- Original content ---")
+        print(original)
+
+    new_content = original + append_suffix
+    if show_output:
+        print("\nWriting updated content...")
+    result = resolved_drive.write_file_content(target_item_id, new_content)
+    if show_output:
+        print(f"Update successful. Item ID: {result.get('id')}")
+
+    if show_output:
+        print("\nVerifying update - reading content again...")
+    updated = resolved_drive.read_file_content(target_item_id)
+    if show_output:
+        print("--- Updated content ---")
+        print(updated)
+
+    return {
+        "client": resolved_client,
+        "authenticator": resolved_client.authenticator,
+        "drive": resolved_drive,
+        "item_id": target_item_id,
+        "original_content": original,
+        "updated_content": updated,
+        "write_result": result,
+        "success": True,
+    }
+
+
 def main() -> None:
-    """Read, modify, and write back the content of a SharePoint drive file.
-
-    Reads the original content, appends a marker line, and writes the updated
-    content back to the same drive item.
-    """
-    client = GraphClient()
-    import os
-
-    drive_id = os.environ["SHAREPOINT_DRIVE_ID"]
-    drive = GraphDrive(drive_id=drive_id, client=client)
-
-    if not ITEM_ID:
-        print("Please set DRIVE_ITEM_ID in .env to a real drive item ID.")
-        return
-
-    print(f"Reading content of item: {ITEM_ID}")
-    original = drive.read_file_content(ITEM_ID)
-    print("\n--- Original content ---")
-    print(original)
-
-    new_content = original + "\n[Appended by python example]\n"
-    print("\nWriting updated content...")
-    result = drive.write_file_content(ITEM_ID, new_content)
-    print(f"Update successful. Item ID: {result.get('id')}")
-
-    print("\nVerifying update — reading content again...")
-    updated = drive.read_file_content(ITEM_ID)
-    print("--- Updated content ---")
-    print(updated)
+    """Read, modify, and write back the content of a SharePoint drive file."""
+    run_example_drive_read_write(show_output=True)
 
 
 if __name__ == "__main__":

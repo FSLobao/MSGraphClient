@@ -52,7 +52,7 @@ _ENGLISH_FALLBACK: dict[str, str] = {
     "token_acquire_failed": "Failed to acquire token: {error} - {description}",
     "delegated_token_acquire_failed": "Failed to acquire delegated token: {error} - {description}",
     "device_code_prompt": "Complete device authentication to continue.",
-    "auth_success_html_text": "Authentication completed. You may close this window",
+    "auth_success_html_text": "Authentication completed. This window should close shortly, if not, please close it manually.",
     "no_valid_token": "No valid token available. Ensure credentials are configured so GraphAuthenticator can acquire a token.",
 }
 

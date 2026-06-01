@@ -1,35 +1,51 @@
-"""
-example_drive_list.py — List the contents of the SharePoint document library root.
+"""List items in a SharePoint drive, supporting object reuse between examples."""
 
-Usage:
-    uv run examples/example_drive_list.py
-"""
+import os
+from typing import Any
 
 from msgraphclient.auth import GraphClient
 from msgraphclient.drive import GraphDrive
 
 
+def run_example_drive_list(
+    client: GraphClient | None = None,
+    drive: GraphDrive | None = None,
+    drive_id: str | None = None,
+    folder_path: str = "root",
+    show_output: bool = True,
+) -> dict[str, Any]:
+    """List drive items and return reusable context and result data."""
+    resolved_client = client or GraphClient()
+    resolved_drive = drive
+    if resolved_drive is None:
+        resolved_drive_id = drive_id or os.environ["SHAREPOINT_DRIVE_ID"]
+        resolved_drive = GraphDrive(drive_id=resolved_drive_id, client=resolved_client)
+
+    if show_output:
+        print(f"Listing items in drive folder '{folder_path}'...\n")
+    items = resolved_drive.list_drive_items(folder_path=folder_path)
+
+    if show_output:
+        if not items:
+            print("(no items found)")
+        for item in items:
+            kind = "folder" if "folder" in item else "file "
+            size = item.get("size", "-")
+            print(f"  [{kind}]  {item['name']:<40}  size={size}")
+        print(f"\nTotal: {len(items)} item(s)")
+
+    return {
+        "client": resolved_client,
+        "authenticator": resolved_client.authenticator,
+        "drive": resolved_drive,
+        "drive_items": items,
+        "folder_path": folder_path,
+    }
+
+
 def main() -> None:
-    """List and display all items in the root of the configured SharePoint drive.
-
-    Shows the name, type (file or folder), and size of each item.
-    """
-    client = GraphClient()
-    import os
-
-    drive_id = os.environ["SHAREPOINT_DRIVE_ID"]
-    drive = GraphDrive(drive_id=drive_id, client=client)
-
-    print("Listing items in the root of the configured drive...\n")
-    items = drive.list_drive_items()
-    if not items:
-        print("(no items found)")
-        return
-    for item in items:
-        kind = "folder" if "folder" in item else "file "
-        size = item.get("size", "-")
-        print(f"  [{kind}]  {item['name']:<40}  size={size}")
-    print(f"\nTotal: {len(items)} item(s)")
+    """List and display all items in the root of the configured SharePoint drive."""
+    run_example_drive_list(show_output=True)
 
 
 if __name__ == "__main__":

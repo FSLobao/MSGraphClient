@@ -9,6 +9,8 @@ Usage:
 """
 
 from pathlib import Path
+from typing import Any
+import os
 
 
 from msgraphclient.auth import GraphClient
@@ -21,36 +23,65 @@ LOCAL_FOLDER: Path = Path(__file__).parent / "downloads"
 # ────────────────────────────────────────────────────────────────────────────
 
 
-def main() -> None:
-    """Download a file from the SharePoint drive to the local filesystem.
+def run_example_drive_download(
+    client: GraphClient | None = None,
+    drive: GraphDrive | None = None,
+    drive_id: str | None = None,
+    item_id: str | None = None,
+    local_folder: str | Path | None = None,
+    show_output: bool = True,
+) -> dict[str, Any]:
+    """Download a drive file and return context plus local path."""
+    resolved_client = client or GraphClient()
+    resolved_drive = drive
+    if resolved_drive is None:
+        resolved_drive_id = drive_id or os.environ["SHAREPOINT_DRIVE_ID"]
+        resolved_drive = GraphDrive(drive_id=resolved_drive_id, client=resolved_client)
 
-    If ITEM_ID is not set, downloads the first file found in the drive root.
-    Saved files are placed in examples/downloads/.
-    """
-    client = GraphClient()
-    import os
+    target_item_id = (item_id or ITEM_ID).strip()
+    target_folder = Path(local_folder) if local_folder else LOCAL_FOLDER
 
-    drive_id = os.environ["SHAREPOINT_DRIVE_ID"]
-    drive = GraphDrive(drive_id=drive_id, client=client)
-
-    item_id = ITEM_ID
-
-    if not item_id:
-        print("No ITEM_ID set — picking the first file from the drive root...")
-        items = drive.list_drive_items()
+    if not target_item_id:
+        if show_output:
+            print("No ITEM_ID set - picking the first file from the drive root...")
+        items = resolved_drive.list_drive_items()
         files = [i for i in items if "folder" not in i]
         if not files:
-            print("No files found in drive root.")
-            return
-        item_id = files[0]["id"]
-        filename = files[0]["name"]
-        print(f"  Using: {filename} (id={item_id})")
+            if show_output:
+                print("No files found in drive root.")
+            return {
+                "client": resolved_client,
+                "authenticator": resolved_client.authenticator,
+                "drive": resolved_drive,
+                "item_id": "",
+                "saved_path": None,
+                "success": False,
+            }
+        target_item_id = str(files[0]["id"])
+        filename = str(files[0]["name"])
+        if show_output:
+            print(f"  Using: {filename} (id={target_item_id})")
     else:
-        filename = f"downloaded_{item_id}"
+        filename = f"downloaded_{target_item_id}"
 
-    dest = LOCAL_FOLDER / filename
-    result_path = drive.download_file(item_id, dest)
-    print(f"\nFile saved to: {result_path}")
+    dest = target_folder / filename
+    result_path = resolved_drive.download_file(target_item_id, dest)
+    if show_output:
+        print(f"\nFile saved to: {result_path}")
+
+    return {
+        "client": resolved_client,
+        "authenticator": resolved_client.authenticator,
+        "drive": resolved_drive,
+        "item_id": target_item_id,
+        "saved_path": result_path,
+        "success": True,
+    }
+
+
+def main() -> None:
+    """Download a file from the SharePoint drive to the local filesystem."""
+    run_example_drive_download(show_output=True)
 
 
 if __name__ == "__main__":

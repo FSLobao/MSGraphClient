@@ -9,7 +9,12 @@ Authentication mode is controlled by .env (GRAPH_AUTH_MODE). This script works f
     - delegated
 """
 
+import os
+from typing import Any
+
 from msgraphclient.auth import GraphAuthorizationError, GraphClient
+from msgraphclient.drive import GraphDrive
+from msgraphclient.lists import GraphList
 
 
 def _safe(value: object) -> str:
@@ -50,48 +55,90 @@ def _print_auth_details(client: GraphClient) -> None:
     print()
 
 
-def main() -> None:
-    """Display auth details and the configured site's summary plus available drives and lists."""
-    client = GraphClient()
-    print(
-        "Fetching configured SharePoint site contents and authentication details...\n"
-    )
+def run_example_site_contents(
+    client: GraphClient | None = None,
+    drive: GraphDrive | None = None,
+    list_client: GraphList | None = None,
+    drive_id: str | None = None,
+    list_id: str | None = None,
+    show_output: bool = True,
+) -> dict[str, Any]:
+    """Return site details and reusable objects for downstream examples."""
+    resolved_client = client or GraphClient()
 
-    _print_auth_details(client)
+    if show_output:
+        print(
+            "Fetching configured SharePoint site contents and authentication details...\n"
+        )
+        _print_auth_details(resolved_client)
 
-    contents = client.get_site_contents()
+    contents = resolved_client.get_site_contents()
     site = contents["site"]
     drives = contents["drives"]
     lists_ = contents["lists"]
 
-    print("Site")
-    print(f"  id:          {site.get('id', '-')}")
-    print(f"  name:        {site.get('name', '-')}")
-    print(f"  displayName: {site.get('displayName', '-')}")
-    print(f"  webUrl:      {site.get('webUrl', '-')}")
-    print()
+    resolved_drive = drive
+    if resolved_drive is None:
+        resolved_drive_id = drive_id or os.environ.get("SHAREPOINT_DRIVE_ID", "")
+        if resolved_drive_id:
+            resolved_drive = GraphDrive(
+                drive_id=resolved_drive_id, client=resolved_client
+            )
 
-    print(f"Drives ({len(drives)})")
-    if not drives:
-        print("  (none found)")
-    for drive in drives:
-        print(
-            "  - "
-            f"{drive.get('name', '(no name)')} | "
-            f"id={drive.get('id', '?')} | "
-            f"type={drive.get('driveType', '?')}"
-        )
-    print()
+    resolved_list_client = list_client
+    if resolved_list_client is None:
+        resolved_list_id = list_id or os.environ.get("SHAREPOINT_LIST_ID", "")
+        if resolved_list_id:
+            resolved_list_client = GraphList(
+                list_id=resolved_list_id,
+                client=resolved_client,
+            )
 
-    print(f"Lists ({len(lists_)})")
-    if not lists_:
-        print("  (none found)")
-    for item in lists_:
-        print(
-            "  - "
-            f"{item.get('displayName', item.get('name', '(no name)'))} | "
-            f"id={item.get('id', '?')}"
-        )
+    if show_output:
+        print("Site")
+        print(f"  id:          {site.get('id', '-')}")
+        print(f"  name:        {site.get('name', '-')}")
+        print(f"  displayName: {site.get('displayName', '-')}")
+        print(f"  webUrl:      {site.get('webUrl', '-')}")
+        print()
+
+        print(f"Drives ({len(drives)})")
+        if not drives:
+            print("  (none found)")
+        for drive_item in drives:
+            print(
+                "  - "
+                f"{drive_item.get('name', '(no name)')} | "
+                f"id={drive_item.get('id', '?')} | "
+                f"type={drive_item.get('driveType', '?')}"
+            )
+        print()
+
+        print(f"Lists ({len(lists_)})")
+        if not lists_:
+            print("  (none found)")
+        for item in lists_:
+            print(
+                "  - "
+                f"{item.get('displayName', item.get('name', '(no name)'))} | "
+                f"id={item.get('id', '?')}"
+            )
+
+    return {
+        "client": resolved_client,
+        "authenticator": resolved_client.authenticator,
+        "site_contents": contents,
+        "site": site,
+        "drives": drives,
+        "lists": lists_,
+        "drive": resolved_drive,
+        "list_client": resolved_list_client,
+    }
+
+
+def main() -> None:
+    """Display auth details and the configured site's summary plus available drives and lists."""
+    run_example_site_contents(show_output=True)
 
 
 if __name__ == "__main__":

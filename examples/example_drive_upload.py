@@ -1,11 +1,9 @@
-"""
-example_drive_upload.py — Upload a local file to the SharePoint document library.
+"""Upload a local file to a SharePoint drive, supporting object reuse between examples."""
 
-Place a file at the LOCAL_FILE path (or change the variable), then run:
-    uv run examples/example_drive_upload.py
-"""
-
+import os
 from pathlib import Path
+from typing import Any
+
 from requests import HTTPError
 
 from msgraphclient.auth import GraphClient
@@ -20,41 +18,86 @@ REMOTE_FOLDER: str = "root"
 # ────────────────────────────────────────────────────────────────────────────
 
 
-def main() -> int:
-    """Upload a local file to the SharePoint drive.
+def run_example_drive_upload(
+    client: GraphClient | None = None,
+    drive: GraphDrive | None = None,
+    drive_id: str | None = None,
+    local_file: str | Path | None = None,
+    remote_folder: str = REMOTE_FOLDER,
+    remote_name: str | None = None,
+    create_sample_if_missing: bool = True,
+    show_output: bool = True,
+) -> dict[str, Any]:
+    """Upload a file and return reusable context plus upload result."""
+    resolved_client = client or GraphClient()
+    resolved_drive = drive
+    if resolved_drive is None:
+        resolved_drive_id = drive_id or os.environ["SHAREPOINT_DRIVE_ID"]
+        resolved_drive = GraphDrive(drive_id=resolved_drive_id, client=resolved_client)
 
-    Creates a sample file if none exists, then uploads it to the configured
-    remote folder using the simple (non-resumable) upload endpoint.
-    """
-    client = GraphClient()
-    import os
+    source_file = Path(local_file) if local_file else LOCAL_FILE
+    if create_sample_if_missing and not source_file.exists():
+        source_file.parent.mkdir(parents=True, exist_ok=True)
+        source_file.write_text("This is a sample file uploaded by python.\n")
+        if show_output:
+            print(f"Created sample file: {source_file}")
 
-    drive_id = os.environ["SHAREPOINT_DRIVE_ID"]
-    drive = GraphDrive(drive_id=drive_id, client=client)
+    if show_output:
+        print(f"Uploading {source_file.name} to drive folder '{remote_folder}'...")
 
-    if not LOCAL_FILE.exists():
-        # Create a sample file for demonstration
-        LOCAL_FILE.parent.mkdir(parents=True, exist_ok=True)
-        LOCAL_FILE.write_text("This is a sample file uploaded by python.\n")
-        print(f"Created sample file: {LOCAL_FILE}")
-
-    print(f"Uploading {LOCAL_FILE.name} to drive folder '{REMOTE_FOLDER}'...")
     try:
-        result = drive.upload_file(LOCAL_FILE, remote_folder=REMOTE_FOLDER)
+        result = resolved_drive.upload_file(
+            source_file,
+            remote_folder=remote_folder,
+            remote_name=remote_name,
+        )
     except HTTPError as exc:
-        print("\nUpload failed.")
-        print(f"  {GraphClient.format_http_error(exc)}")
-        return 1
-    except Exception as exc:
-        print("\nUpload failed due to an unexpected error.")
-        print(f"  {exc}")
-        return 1
+        if show_output:
+            print("\nUpload failed.")
+            print(f"  {GraphClient.format_http_error(exc)}")
+        return {
+            "client": resolved_client,
+            "authenticator": resolved_client.authenticator,
+            "drive": resolved_drive,
+            "local_file": source_file,
+            "upload_result": None,
+            "error": exc,
+            "success": False,
+        }
+    except Exception as exc:  # noqa: BLE001
+        if show_output:
+            print("\nUpload failed due to an unexpected error.")
+            print(f"  {exc}")
+        return {
+            "client": resolved_client,
+            "authenticator": resolved_client.authenticator,
+            "drive": resolved_drive,
+            "local_file": source_file,
+            "upload_result": None,
+            "error": exc,
+            "success": False,
+        }
 
-    print("\nUpload successful!")
-    print(f"  Item ID  : {result.get('id')}")
-    print(f"  Name     : {result.get('name')}")
-    print(f"  Web URL  : {result.get('webUrl')}")
-    return 0
+    if show_output:
+        print("\nUpload successful!")
+        print(f"  Item ID  : {result.get('id')}")
+        print(f"  Name     : {result.get('name')}")
+        print(f"  Web URL  : {result.get('webUrl')}")
+
+    return {
+        "client": resolved_client,
+        "authenticator": resolved_client.authenticator,
+        "drive": resolved_drive,
+        "local_file": source_file,
+        "upload_result": result,
+        "success": True,
+    }
+
+
+def main() -> int:
+    """Upload a local file to the SharePoint drive."""
+    context = run_example_drive_upload(show_output=True)
+    return 0 if context["success"] else 1
 
 
 if __name__ == "__main__":
