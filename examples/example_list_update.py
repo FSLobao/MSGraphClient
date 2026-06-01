@@ -19,6 +19,8 @@ import requests
 from msgraphclient.auth import GraphClient
 from msgraphclient.lists import GraphList
 
+from list_value_generation import bounded_number_update
+
 
 # Set to the ID of the item to update, or leave empty to update the first item.
 ITEM_ID: str = ""
@@ -103,10 +105,13 @@ def _build_typed_update(
         elif field_type == "number":
             if isinstance(current_value, bool):
                 continue
-            if isinstance(current_value, Real) and isfinite(float(current_value)):
-                payload[display_name] = float(current_value) + number_increment
-            else:
-                payload[display_name] = number_increment
+            if isinstance(current_value, Real) and not isfinite(float(current_value)):
+                current_value = None
+            payload[display_name] = bounded_number_update(
+                current_value=current_value,
+                validation=validation,
+                increment=number_increment,
+            )
 
         elif field_type == "boolean":
             payload[display_name] = (
