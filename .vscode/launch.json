@@ -11,15 +11,6 @@
             "cwd": "${workspaceFolder}"
         },
         {
-            "name": "Site: Get Contents (Delegated)",
-            "type": "python",
-            "request": "launch",
-            "module": "examples.example_delegated_site_contents",
-            "console": "integratedTerminal",
-            "justMyCode": true,
-            "cwd": "${workspaceFolder}"
-        },
-        {
             "name": "Drive: List Items",
             "type": "python",
             "request": "launch",
