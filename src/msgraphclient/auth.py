@@ -9,6 +9,7 @@ handled by :class:`msgraphclient.client.GraphClient`).
 """
 
 import os
+from collections.abc import Sequence
 
 import msal
 
@@ -28,6 +29,21 @@ __all__ = ["GraphAuthorizationError", "GraphClient", "GraphAuthenticator"]
 def _load_token_cache() -> "msal.SerializableTokenCache":
     """Return an in-memory MSAL token cache for delegated authentication."""
     return msal.SerializableTokenCache()
+
+
+def _normalize_client_credential_scopes(scopes: Sequence[str] | str) -> list[str]:
+    """Return a list of scopes suitable for MSAL acquire_token_for_client.
+
+    MSAL expects a list[str] for client-credentials flow. Accept tuple/list from
+    defaults and tolerate a single-string input from custom integrations.
+    """
+    if isinstance(scopes, str):
+        normalized = scopes.strip()
+        return [normalized] if normalized else []
+
+    return [
+        scope.strip() for scope in scopes if isinstance(scope, str) and scope.strip()
+    ]
 
 
 def _find_chromium_app_browser(
@@ -280,7 +296,8 @@ class GraphAuthenticator:
             client_credential=client_secret,
             authority=authority,
         )
-        result = app.acquire_token_for_client(scopes=GRAPH_DEFAULTS.graph_scopes)
+        scopes = _normalize_client_credential_scopes(GRAPH_DEFAULTS.graph_scopes)
+        result = app.acquire_token_for_client(scopes=scopes)
         return result if isinstance(result, dict) else None
 
     def _acquire_access_token_result_delegated(

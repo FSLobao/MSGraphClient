@@ -10,6 +10,7 @@ Usage:
 
 import os
 from datetime import datetime, timezone
+from math import isfinite
 from numbers import Real
 from typing import Any
 
@@ -46,6 +47,15 @@ def _format_value_for_log(value: Any, max_len: int = 200) -> str:
     return f"{text[: max_len - 3]}..."
 
 
+def _is_missing_value(value: Any) -> bool:
+    """Return True for values that should be treated as missing input."""
+    if value is None:
+        return True
+    if isinstance(value, float):
+        return not isfinite(value)
+    return False
+
+
 def _build_typed_update(
     list_client: GraphList,
     current_item: dict[str, Any],
@@ -80,7 +90,9 @@ def _build_typed_update(
 
         if field_type == "text":
             max_length = validation.get("max_length")
-            base_text = _sanitize_single_line_text(current_value, max_length=None)
+            base_text = ""
+            if not _is_missing_value(current_value):
+                base_text = _sanitize_single_line_text(current_value, max_length=None)
             suffix = f" | Updated at {timestamp_label}"
             combined = f"{base_text}{suffix}" if base_text else suffix.strip()
             payload[display_name] = _sanitize_single_line_text(
@@ -91,7 +103,7 @@ def _build_typed_update(
         elif field_type == "number":
             if isinstance(current_value, bool):
                 continue
-            if isinstance(current_value, Real):
+            if isinstance(current_value, Real) and isfinite(float(current_value)):
                 payload[display_name] = float(current_value) + number_increment
             else:
                 payload[display_name] = number_increment

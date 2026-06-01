@@ -188,6 +188,9 @@ def test_graph_authenticator_explicit_credentials() -> None:
 
     assert auth.auth_mode == "client_credentials"
     assert auth.token == "app-only-token"
+    mock_app.acquire_token_for_client.assert_called_once_with(
+        scopes=list(GRAPH_DEFAULTS.graph_scopes)
+    )
 
 
 def test_graph_authenticator_delegated_device_code_mode() -> None:
