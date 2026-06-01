@@ -51,6 +51,70 @@ _UNIMPLEMENTED_INTERNAL_FIELD_TYPES: dict[str, str] = {
     "contenttypeid": "contentType",
 }
 
+_COLUMN_METADATA_KEYS: set[str] = {
+    "@odata.context",
+    "boolean",
+    "choice",
+    "columnGroup",
+    "contentApprovalStatus",
+    "currency",
+    "dateTime",
+    "defaultValue",
+    "description",
+    "displayName",
+    "enforceUniqueValues",
+    "geolocation",
+    "hidden",
+    "hyperlinkOrPicture",
+    "id",
+    "indexed",
+    "isDeletable",
+    "isReorderable",
+    "isSealed",
+    "lookup",
+    "name",
+    "number",
+    "personOrGroup",
+    "propagateChanges",
+    "readOnly",
+    "required",
+    "sourceColumn",
+    "sourceContentType",
+    "term",
+    "text",
+    "thumbnail",
+    "type",
+    "validation",
+    "note",
+}
+
+_COLUMN_TYPE_ENUM_MAP: dict[str, str] = {
+    "boolean": "boolean",
+    "calculated": "calculated",
+    "choice": "choice",
+    "contentapprovalstatus": "contentApprovalStatus",
+    "currency": "currency",
+    "datetime": "dateTime",
+    "geolocation": "geolocation",
+    "hyperlinkorpicture": "hyperlinkOrPicture",
+    "lookup": "lookup",
+    "number": "number",
+    "personorgroup": "personOrGroup",
+    "term": "term",
+    "text": "text",
+    "thumbnail": "image",
+}
+
+_TYPE_FACET_KEYS: set[str] = {
+    "text",
+    "note",
+    "number",
+    "dateTime",
+    "boolean",
+    "choice",
+    *tuple(_UNIMPLEMENTED_COLUMN_TYPES.keys()),
+}
+
 
 class GraphList:
     """SharePoint list operations backed by Microsoft Graph.
@@ -160,6 +224,19 @@ class GraphList:
         """
         validation: dict = {}
 
+        type_enum = col.get("type")
+        if isinstance(type_enum, str):
+            original_type = type_enum.strip()
+            mapped_type = _COLUMN_TYPE_ENUM_MAP.get(original_type.casefold())
+            if mapped_type == "image":
+                return mapped_type, [], {"implemented": False}
+            if mapped_type in _UNIMPLEMENTED_COLUMN_TYPES.values():
+                return mapped_type, [], {"implemented": False}
+            if mapped_type is not None:
+                return mapped_type, [], validation
+            if original_type:
+                return original_type, [], {"implemented": False}
+
         for type_key in ("text", "note"):
             if type_key in col:
                 sub = col[type_key]
@@ -199,7 +276,45 @@ class GraphList:
                 {"implemented": False},
             )
 
-        return "text", [], validation
+        original_type_name = GraphList._extract_unknown_type_name(col)
+        if original_type_name is not None:
+            return original_type_name, [], {"implemented": False}
+
+        return "unknown", [], {"implemented": False}
+
+    @staticmethod
+    def _extract_unknown_type_name(col: dict) -> str | None:
+        """Return an unrecognized SharePoint type label when one is present."""
+        for key, value in col.items():
+            if key in _COLUMN_METADATA_KEYS:
+                continue
+            if key.startswith("@"):
+                continue
+            if isinstance(value, (dict, list)):
+                return str(key)
+        return None
+
+    @staticmethod
+    def _has_type_metadata(col: dict) -> bool:
+        """Return whether the Graph payload exposes any usable type discriminator."""
+        type_enum = col.get("type")
+        if isinstance(type_enum, str) and type_enum.strip():
+            return True
+        if any(facet_key in col for facet_key in _TYPE_FACET_KEYS):
+            return True
+        return GraphList._extract_unknown_type_name(col) is not None
+
+    def _get_column_details(self, column_id: str) -> dict:
+        """Fetch the full Graph definition for one column.
+
+        The list columns collection omits some type facets such as ``thumbnail``.
+        A direct fetch for a specific column exposes richer metadata, which lets
+        the schema correctly classify image columns instead of falling back to
+        generic text.
+        """
+        return self.client.get(
+            f"/sites/{self.site_id}/lists/{self.list_id}/columns/{column_id}"
+        )
 
     def _load_column_schema(self) -> list[dict]:
         """Fetch and filter column definitions from the Graph columns endpoint.
@@ -225,6 +340,16 @@ class GraphList:
                 continue
             if col.get("readOnly", False):
                 continue
+
+            if not self._has_type_metadata(col):
+                column_id = str(col.get("id", "")).strip()
+                if column_id:
+                    try:
+                        detailed_col = self._get_column_details(column_id)
+                    except requests.HTTPError:
+                        detailed_col = {}
+                    if detailed_col:
+                        col = {**col, **detailed_col}
 
             name = col.get("name", "")
             display_name = col.get("displayName", name)
@@ -476,7 +601,7 @@ class GraphList:
             ValueError: If the value is structurally invalid (bad choice,
                 unparseable datetime string).
         """
-        graph_type = self._field_types.get(display_name, "text")
+        graph_type = self._field_types.get(display_name, "unknown")
         constraints = self._field_validation.get(display_name, {})
 
         if constraints.get("implemented") is False:

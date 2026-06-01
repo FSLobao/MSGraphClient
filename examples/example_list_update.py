@@ -19,7 +19,7 @@ import requests
 from msgraphclient.auth import GraphClient
 from msgraphclient.lists import GraphList
 
-from list_value_generation import bounded_number_update
+from examples.list_value_generation import bounded_number_update
 
 
 # Set to the ID of the item to update, or leave empty to update the first item.

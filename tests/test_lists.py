@@ -399,6 +399,130 @@ def test_get_schema_returns_editable_columns(env: None) -> None:
     ]
 
 
+def test_get_schema_fetches_column_details_for_ambiguous_image_columns(
+    env: None,
+) -> None:
+    """Columns missing collection-level facets should be enriched from detail fetches."""
+    mock_client = MagicMock()
+    mock_client.sharepoint_site_id = "site-xyz"
+    mock_client.get.side_effect = [
+        {
+            "id": "list-abc",
+            "name": "MonitorRNI",
+            "displayName": "Monitor RNI",
+            "webUrl": "https://contoso.sharepoint.com/sites/site/lists/monitorrni",
+        },
+        {
+            "value": [
+                {
+                    "id": "field-image-id",
+                    "name": "field_image",
+                    "displayName": "Imagem",
+                    "required": False,
+                }
+            ]
+        },
+        {
+            "id": "field-image-id",
+            "name": "field_image",
+            "displayName": "Imagem",
+            "required": False,
+            "thumbnail": {},
+        },
+    ]
+
+    list_client = lists_mod.GraphList(list_id="list-abc", client=mock_client)
+
+    assert list_client.get_schema() == [
+        {
+            "display_name": "Imagem",
+            "type": "image",
+            "required": False,
+            "read_only": False,
+            "validation": {"implemented": False},
+        }
+    ]
+    assert (
+        mock_client.get.call_args_list[2]
+        .args[0]
+        .endswith("/sites/site-xyz/lists/list-abc/columns/field-image-id")
+    )
+
+
+def test_get_schema_preserves_unknown_sharepoint_type_name(env: None) -> None:
+    """Unknown Graph type enums should remain labeled with the original type name."""
+    mock_client = MagicMock()
+    mock_client.sharepoint_site_id = "site-xyz"
+    mock_client.get.side_effect = [
+        {
+            "id": "list-abc",
+            "name": "MonitorRNI",
+            "displayName": "Monitor RNI",
+            "webUrl": "https://contoso.sharepoint.com/sites/site/lists/monitorrni",
+        },
+        {
+            "value": [
+                {
+                    "id": "field-custom-id",
+                    "name": "field_custom",
+                    "displayName": "Custom Field",
+                    "required": False,
+                    "type": "mysteryField",
+                }
+            ]
+        },
+    ]
+
+    list_client = lists_mod.GraphList(list_id="list-abc", client=mock_client)
+
+    assert list_client.get_schema() == [
+        {
+            "display_name": "Custom Field",
+            "type": "mysteryField",
+            "required": False,
+            "read_only": False,
+            "validation": {"implemented": False},
+        }
+    ]
+
+
+def test_get_schema_preserves_unknown_type_facet_name(env: None) -> None:
+    """Unknown SharePoint facet keys should not fall back to generic text."""
+    mock_client = MagicMock()
+    mock_client.sharepoint_site_id = "site-xyz"
+    mock_client.get.side_effect = [
+        {
+            "id": "list-abc",
+            "name": "MonitorRNI",
+            "displayName": "Monitor RNI",
+            "webUrl": "https://contoso.sharepoint.com/sites/site/lists/monitorrni",
+        },
+        {
+            "value": [
+                {
+                    "id": "field-opaque-id",
+                    "name": "field_opaque",
+                    "displayName": "Opaque Field",
+                    "required": False,
+                    "opaqueWidget": {},
+                }
+            ]
+        },
+    ]
+
+    list_client = lists_mod.GraphList(list_id="list-abc", client=mock_client)
+
+    assert list_client.get_schema() == [
+        {
+            "display_name": "Opaque Field",
+            "type": "opaqueWidget",
+            "required": False,
+            "read_only": False,
+            "validation": {"implemented": False},
+        }
+    ]
+
+
 def test_get_field_types_returns_mapping(env: None) -> None:
     """get_field_types should map display names to Graph types."""
     list_client = lists_mod.GraphList(list_id="list-abc", client=_mock_client())
@@ -537,6 +661,16 @@ def test_validate_item_unimplemented_type(env: None) -> None:
 
     with pytest.raises(ValueError, match="type 'lookup'.*not implemented"):
         list_client.validate_item({"Title": "Item", "Parent Item": "42"})
+
+
+def test_validate_item_unknown_type_fails_closed(env: None) -> None:
+    """Missing schema type metadata should never fall back to a writable text field."""
+    list_client = lists_mod.GraphList(list_id="list-abc", client=_mock_client())
+    list_client._field_types["Customer Name"] = "unknownFacet"
+    list_client._field_validation["Customer Name"] = {"implemented": False}
+
+    with pytest.raises(ValueError, match="type 'unknownFacet'.*not implemented"):
+        list_client.validate_item({"Title": "Item", "Customer Name": "Alpha"})
 
 
 def test_validate_item_datetime_string(env: None) -> None:
