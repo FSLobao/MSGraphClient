@@ -5,11 +5,13 @@ The primary API is the ``GraphDrive`` class, which validates configuration and
 tests drive access on initialization.
 
 Covered operations:
-    list_drive_items    — list the children of a folder (default: root)
-    download_file       — download a drive item to a local path
-    upload_file         — upload a local file to the drive
-    read_file_content   — return the text content of a drive item
-    write_file_content  — overwrite a drive item with new text content
+    ls                  — list the children of the current working folder
+    pwd                 — return current working folder path
+    cd                  — change current working folder with Graph validation
+    download            — download a drive item to a local path
+    upload              — upload a local file to the drive
+    read                — return the text content of a drive item
+    write               — overwrite a drive item with new text content
 """
 
 from __future__ import annotations
@@ -30,12 +32,14 @@ class GraphDrive:
         self,
         drive_id: str,
         client: GraphClient | None = None,
+        working_folder: str = "/",
     ) -> None:
         """Initialize drive operations.
 
         Args:
             drive_id: SharePoint drive ID (required).
             client: Optional pre-configured GraphClient instance.
+            working_folder: Initial working folder path (default: root "/").
         """
         self.drive_id: str = drive_id
         self.client = client or GraphClient()
@@ -47,27 +51,94 @@ class GraphDrive:
         self.drive_web_url: str = str(self.drive_info.get("webUrl", ""))
         self.drive_type: str = str(self.drive_info.get("driveType", ""))
 
+        self.working_folder: str = "/"
+        self.cd(working_folder)
+
     def _get_drive_summary(self) -> dict:
         """Return basic metadata for the configured drive."""
         return self.client.get(
             f"/drives/{self.drive_id}?$select=id,name,webUrl,driveType"
         )
 
-    def list_drive_items(self, folder_path: str = "root") -> list[dict]:
-        """Return the children of *folder_path* in the configured drive.
+    @property
+    def cwd(self) -> str:
+        """Return current working folder path (alias for working_folder)."""
+        return self.working_folder
 
-        Args:
-            folder_path: A drive path string such as ``"root"`` or
-                ``"root:/Documents/Reports:"``. Defaults to ``"root"``.
+    def _normalize_working_folder(self, folder_path: str) -> str:
+        """Normalize root/path-like values into an absolute folder path."""
+        raw = folder_path.strip().replace("\\", "/")
+        if raw in {"", ".", "root", "root:/", "/"}:
+            return "/"
 
-        Returns:
-            A list of Graph driveItem dicts.
-        """
-        path = f"/drives/{self.drive_id}/items/{folder_path}/children"
+        if raw.startswith("root:/"):
+            raw = raw[len("root:/") :]
+            if raw.endswith(":"):
+                raw = raw[:-1]
+        elif raw.startswith("/"):
+            raw = raw[1:]
+
+        parts: list[str] = []
+        for segment in raw.split("/"):
+            if not segment or segment == ".":
+                continue
+            if segment == "..":
+                if parts:
+                    parts.pop()
+                continue
+            parts.append(segment)
+
+        return "/" + "/".join(parts) if parts else "/"
+
+    def _resolve_folder_path(self, path: str) -> str:
+        """Resolve *path* from current folder, supporting relative traversal."""
+        candidate = path.strip().replace("\\", "/")
+        if candidate in {"", "."}:
+            return self.working_folder
+
+        is_absolute = candidate.startswith("/") or candidate.startswith("root:/")
+        if is_absolute:
+            return self._normalize_working_folder(candidate)
+
+        base = self.working_folder if self.working_folder != "/" else ""
+        return self._normalize_working_folder(f"{base}/{candidate}")
+
+    def _graph_folder_path(self, folder_path: str) -> str:
+        """Convert a normalized folder path into Graph path syntax."""
+        if folder_path == "/":
+            return "root"
+        return f"root:/{folder_path.strip('/')}"
+
+    def _validate_folder_with_graph(self, folder_path: str) -> None:
+        """Validate that *folder_path* exists in SharePoint and is a folder."""
+        graph_path = self._graph_folder_path(folder_path)
+        item = self.client.get(
+            f"/drives/{self.drive_id}/{graph_path}?$select=id,name,folder"
+        )
+        if "folder" not in item:
+            raise ValueError(f"Path is not a folder in SharePoint: {folder_path}")
+
+    def pwd(self) -> str:
+        """Return the current working folder path."""
+        return self.working_folder
+
+    def cd(self, path: str) -> str:
+        """Change working folder to *path* after SharePoint validation."""
+        target = self._resolve_folder_path(path)
+        self._validate_folder_with_graph(target)
+        self.working_folder = target
+        return self.working_folder
+
+    def ls(self) -> list[dict]:
+        """Return children of the current working folder."""
+        if self.working_folder == "/":
+            path = f"/drives/{self.drive_id}/root/children"
+        else:
+            path = f"/drives/{self.drive_id}/root:/{self.working_folder.strip('/')}:/children"
         data = self.client.get(path)
         return data.get("value", [])
 
-    def download_file(self, item_id: str, local_path: str | Path) -> Path:
+    def download(self, item_id: str, local_path: str | Path) -> Path:
         """Download a drive item to *local_path*.
 
         Args:
@@ -83,7 +154,7 @@ class GraphDrive:
         dest.write_bytes(raw)
         return dest.resolve()
 
-    def upload_file(
+    def upload(
         self,
         local_path: str | Path,
         remote_folder: str = "root",
@@ -109,7 +180,7 @@ class GraphDrive:
         path = f"/drives/{self.drive_id}/items/{remote_folder}:/{name}:/content"
         return self.client.put_bytes(path, data)
 
-    def read_file_content(self, item_id: str, encoding: str = "utf-8") -> str:
+    def read(self, item_id: str, encoding: str = "utf-8") -> str:
         """Return the decoded text content of a drive item.
 
         Args:
@@ -122,7 +193,7 @@ class GraphDrive:
         raw = self.client.get_raw(f"/drives/{self.drive_id}/items/{item_id}/content")
         return raw.decode(encoding)
 
-    def write_file_content(
+    def write(
         self,
         item_id: str,
         content: str,

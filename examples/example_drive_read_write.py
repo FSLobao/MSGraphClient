@@ -52,7 +52,7 @@ def run_example_drive_read_write(
 
     if show_output:
         print(f"Reading content of item: {target_item_id}")
-    original = resolved_drive.read_file_content(target_item_id)
+    original = resolved_drive.read(target_item_id)
     if show_output:
         print("\n--- Original content ---")
         print(original)
@@ -60,13 +60,13 @@ def run_example_drive_read_write(
     new_content = original + append_suffix
     if show_output:
         print("\nWriting updated content...")
-    result = resolved_drive.write_file_content(target_item_id, new_content)
+    result = resolved_drive.write(target_item_id, new_content)
     if show_output:
         print(f"Update successful. Item ID: {result.get('id')}")
 
     if show_output:
         print("\nVerifying update - reading content again...")
-    updated = resolved_drive.read_file_content(target_item_id)
+    updated = resolved_drive.read(target_item_id)
     if show_output:
         print("--- Updated content ---")
         print(updated)

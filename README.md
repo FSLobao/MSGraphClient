@@ -329,11 +329,13 @@ drive = GraphDrive(drive_id=os.environ["SHAREPOINT_DRIVE_ID"], client=client)
 
 | Método | Descrição |
 |---|---|
-| `GraphDrive.list_drive_items(folder_path)` | Lista os filhos de uma pasta |
-| `GraphDrive.download_file(item_id, local_path)` | Baixa um arquivo para disco |
-| `GraphDrive.upload_file(local_path, remote_folder)` | Envia um arquivo local (≤ 4 MB) |
-| `GraphDrive.read_file_content(item_id)` | Retorna o conteúdo textual do arquivo |
-| `GraphDrive.write_file_content(item_id, content)` | Sobrescreve o conteúdo textual do arquivo |
+| `GraphDrive.ls()` | Lista os filhos da pasta de trabalho atual |
+| `GraphDrive.pwd()` | Retorna a pasta de trabalho atual |
+| `GraphDrive.cd(path)` | Altera a pasta de trabalho, validando no SharePoint |
+| `GraphDrive.download(item_id, local_path)` | Baixa um arquivo para disco |
+| `GraphDrive.upload(local_path, remote_folder)` | Envia um arquivo local (≤ 4 MB) |
+| `GraphDrive.read(item_id)` | Retorna o conteúdo textual do arquivo |
+| `GraphDrive.write(item_id, content)` | Sobrescreve o conteúdo textual do arquivo |
 
 ### `lists.py`
 Operações de listas do SharePoint. Requer `list_id` explícito na construção.

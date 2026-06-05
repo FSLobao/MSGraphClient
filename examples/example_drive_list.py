@@ -11,7 +11,7 @@ def run_example_drive_list(
     client: GraphClient | None = None,
     drive: GraphDrive | None = None,
     drive_id: str | None = None,
-    folder_path: str = "root",
+    folder_path: str = "/",
     show_output: bool = True,
 ) -> dict[str, Any]:
     """List drive items and return reusable context and result data."""
@@ -21,9 +21,11 @@ def run_example_drive_list(
         resolved_drive_id = drive_id or os.environ["SHAREPOINT_DRIVE_ID"]
         resolved_drive = GraphDrive(drive_id=resolved_drive_id, client=resolved_client)
 
+    resolved_drive.cd(folder_path)
+
     if show_output:
-        print(f"Listing items in drive folder '{folder_path}'...\n")
-    items = resolved_drive.list_drive_items(folder_path=folder_path)
+        print(f"Listing items in drive folder '{resolved_drive.pwd()}'...\n")
+    items = resolved_drive.ls()
 
     if show_output:
         if not items:
@@ -39,7 +41,7 @@ def run_example_drive_list(
         "authenticator": resolved_client.authenticator,
         "drive": resolved_drive,
         "drive_items": items,
-        "folder_path": folder_path,
+        "folder_path": resolved_drive.pwd(),
     }
 
 

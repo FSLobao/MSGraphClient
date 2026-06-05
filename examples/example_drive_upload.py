@@ -46,7 +46,7 @@ def run_example_drive_upload(
         print(f"Uploading {source_file.name} to drive folder '{remote_folder}'...")
 
     try:
-        result = resolved_drive.upload_file(
+        result = resolved_drive.upload(
             source_file,
             remote_folder=remote_folder,
             remote_name=remote_name,

@@ -77,11 +77,13 @@ MSGraphClient/
 - A descoberta do site agora vive em `GraphAuthenticator`.
 
 ### `src/msgraphclient/drive.py`
-- `GraphDrive.list_drive_items(folder_path)`
-- `GraphDrive.download_file(item_id, local_path)`
-- `GraphDrive.upload_file(local_path, remote_folder, remote_name=None)`
-- `GraphDrive.read_file_content(item_id)`
-- `GraphDrive.write_file_content(item_id, content)`
+- `GraphDrive.ls()`
+- `GraphDrive.pwd()`
+- `GraphDrive.cd(path)`
+- `GraphDrive.download(item_id, local_path)`
+- `GraphDrive.upload(local_path, remote_folder, remote_name=None)`
+- `GraphDrive.read(item_id)`
+- `GraphDrive.write(item_id, content)`
 
 ### `src/msgraphclient/lists.py`
 - `GraphList.get_views()` com fallback seguro para listas sem views

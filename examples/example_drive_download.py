@@ -44,7 +44,7 @@ def run_example_drive_download(
     if not target_item_id:
         if show_output:
             print("No ITEM_ID set - picking the first file from the drive root...")
-        items = resolved_drive.list_drive_items()
+        items = resolved_drive.ls()
         files = [i for i in items if "folder" not in i]
         if not files:
             if show_output:
@@ -65,7 +65,7 @@ def run_example_drive_download(
         filename = f"downloaded_{target_item_id}"
 
     dest = target_folder / filename
-    result_path = resolved_drive.download_file(target_item_id, dest)
+    result_path = resolved_drive.download(target_item_id, dest)
     if show_output:
         print(f"\nFile saved to: {result_path}")
 
