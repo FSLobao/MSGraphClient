@@ -1,12 +1,12 @@
-"""Tests for auth.py"""
+﻿"""Tests for auth.py"""
 
 import pytest
 import msal
 from unittest.mock import MagicMock, patch
 
-import msgraphclient.auth as auth_mod
-from msgraphclient.messages import EN_MESSAGES, get_messages
-from msgraphclient.settings import GRAPH_DEFAULTS, GraphSettings
+import ezspi.auth as auth_mod
+from ezspi.messages import EN_MESSAGES, get_messages
+from ezspi.settings import DEFAULTS, Settings
 
 
 @pytest.fixture(autouse=True)
@@ -16,17 +16,17 @@ def _default_graph_auth_mode(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_graph_client_missing_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Test that GraphClient raises EnvironmentError when vars are missing."""
+    """Test that Client raises EnvironmentError when vars are missing."""
     monkeypatch.delenv("AZURE_TENANT_ID", raising=False)
     monkeypatch.delenv("AZURE_CLIENT_ID", raising=False)
     monkeypatch.delenv("AZURE_CLIENT_SECRET", raising=False)
 
     with pytest.raises(EnvironmentError, match="AZURE_TENANT_ID"):
-        auth_mod.GraphClient()
+        auth_mod.Client()
 
 
 def test_graph_client_uses_msal_token(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Test that GraphClient stores token string when MSAL succeeds."""
+    """Test that Client stores token string when MSAL succeeds."""
     monkeypatch.setenv("AZURE_TENANT_ID", "tenant-id")
     monkeypatch.setenv("AZURE_CLIENT_ID", "client-id")
     monkeypatch.setenv("AZURE_CLIENT_SECRET", "client-secret")
@@ -38,16 +38,16 @@ def test_graph_client_uses_msal_token(monkeypatch: pytest.MonkeyPatch) -> None:
 
     with (
         patch.object(msal, "ConfidentialClientApplication", return_value=mock_app),
-        patch.object(auth_mod.GraphClient, "_load_site_info"),
+        patch.object(auth_mod.Client, "_load_site_info"),
     ):
-        client = auth_mod.GraphClient()
+        client = auth_mod.Client()
 
     assert client._token == "fake-token-abc"
     assert client.authenticator.token == "fake-token-abc"
 
 
 def test_graph_client_msal_error(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Test that GraphClient raises RuntimeError when MSAL returns an error."""
+    """Test that Client raises RuntimeError when MSAL returns an error."""
     monkeypatch.setenv("AZURE_TENANT_ID", "tenant-id")
     monkeypatch.setenv("AZURE_CLIENT_ID", "client-id")
     monkeypatch.setenv("AZURE_CLIENT_SECRET", "client-secret")
@@ -60,13 +60,13 @@ def test_graph_client_msal_error(monkeypatch: pytest.MonkeyPatch) -> None:
 
     with patch.object(msal, "ConfidentialClientApplication", return_value=mock_app):
         with pytest.raises(RuntimeError, match="invalid_client"):
-            auth_mod.GraphClient()
+            auth_mod.Client()
 
 
 def test_graph_client_reuses_provided_authenticator(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Test GraphClient reuses a provided GraphAuthenticator instance."""
+    """Test Client reuses a provided Authenticator instance."""
     monkeypatch.delenv("SHAREPOINT_SITE_ID", raising=False)
 
     mock_authenticator = MagicMock()
@@ -74,15 +74,15 @@ def test_graph_client_reuses_provided_authenticator(
     mock_authenticator.sharepoint_site_id = ""
     mock_authenticator.auth_mode = "client_credentials"
 
-    client = auth_mod.GraphClient(authenticator=mock_authenticator)
+    client = auth_mod.Client(authenticator=mock_authenticator)
 
     assert client.authenticator is mock_authenticator
     assert client._token == "token-from-authenticator"
 
 
 def test_graph_authenticator_stores_sharepoint_site_id() -> None:
-    """Test GraphAuthenticator stores sharepoint_site_id when passed."""
-    auth = auth_mod.GraphAuthenticator(
+    """Test Authenticator stores sharepoint_site_id when passed."""
+    auth = auth_mod.Authenticator(
         token="pre-built-token", sharepoint_site_id="site-custom"
     )
 
@@ -91,8 +91,8 @@ def test_graph_authenticator_stores_sharepoint_site_id() -> None:
 
 
 def test_graph_authenticator_initialization_with_explicit_token() -> None:
-    """Test GraphAuthenticator stores token directly when provided."""
-    auth = auth_mod.GraphAuthenticator(
+    """Test Authenticator stores token directly when provided."""
+    auth = auth_mod.Authenticator(
         token="token-xyz",
         sharepoint_site_id="site-token",
     )
@@ -102,7 +102,7 @@ def test_graph_authenticator_initialization_with_explicit_token() -> None:
 
 
 def test_graph_client_uses_delegated_mode(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Test GraphClient acquires token via delegated mode when requested."""
+    """Test Client acquires token via delegated mode when requested."""
     monkeypatch.setenv("AZURE_TENANT_ID", "tenant-id")
     monkeypatch.setenv("AZURE_CLIENT_ID", "client-id")
     monkeypatch.setenv("GRAPH_AUTH_MODE", "delegated")
@@ -116,9 +116,9 @@ def test_graph_client_uses_delegated_mode(monkeypatch: pytest.MonkeyPatch) -> No
 
     with (
         patch.object(msal, "PublicClientApplication", return_value=mock_app),
-        patch.object(auth_mod.GraphClient, "_load_site_info"),
+        patch.object(auth_mod.Client, "_load_site_info"),
     ):
-        client = auth_mod.GraphClient(auth_mode="delegated")
+        client = auth_mod.Client(auth_mode="delegated")
 
     assert client._token == "delegated-token-abc"
     assert client.authenticator.token == "delegated-token-abc"
@@ -135,7 +135,7 @@ def test_graph_client_delegated_mode_requires_env(
     monkeypatch.delenv("AZURE_CLIENT_SECRET", raising=False)
 
     with pytest.raises(EnvironmentError, match="AZURE_TENANT_ID"):
-        auth_mod.GraphClient(auth_mode="delegated")
+        auth_mod.Client(auth_mode="delegated")
 
 
 def test_graph_client_credentials_requires_secret(
@@ -147,7 +147,7 @@ def test_graph_client_credentials_requires_secret(
     monkeypatch.delenv("AZURE_CLIENT_SECRET", raising=False)
 
     with pytest.raises(EnvironmentError, match="AZURE_CLIENT_SECRET"):
-        auth_mod.GraphClient()
+        auth_mod.Client()
 
 
 def test_graph_delegated_does_not_require_secret(
@@ -165,21 +165,21 @@ def test_graph_delegated_does_not_require_secret(
 
     with (
         patch.object(msal, "PublicClientApplication", return_value=mock_app),
-        patch.object(auth_mod.GraphClient, "_load_site_info"),
+        patch.object(auth_mod.Client, "_load_site_info"),
     ):
-        client = auth_mod.GraphClient(auth_mode="delegated")
+        client = auth_mod.Client(auth_mode="delegated")
 
     assert client._token == "delegated-no-secret"
 
 
 def test_graph_authenticator_explicit_credentials() -> None:
-    """Test GraphAuthenticator with explicit credentials (client_credentials)."""
+    """Test Authenticator with explicit credentials (client_credentials)."""
     fake_result = {"access_token": "app-only-token"}
     mock_app = MagicMock()
     mock_app.acquire_token_for_client.return_value = fake_result
 
     with patch.object(msal, "ConfidentialClientApplication", return_value=mock_app):
-        auth = auth_mod.GraphAuthenticator(
+        auth = auth_mod.Authenticator(
             tenant_id="tenant-id",
             client_id="client-id",
             client_secret="client-secret",
@@ -189,7 +189,7 @@ def test_graph_authenticator_explicit_credentials() -> None:
     assert auth.auth_mode == "client_credentials"
     assert auth.token == "app-only-token"
     mock_app.acquire_token_for_client.assert_called_once_with(
-        scopes=list(GRAPH_DEFAULTS.graph_scopes)
+        scopes=list(DEFAULTS.graph_scopes)
     )
 
 
@@ -205,7 +205,7 @@ def test_graph_authenticator_delegated_device_code_mode() -> None:
     }
 
     with patch.object(msal, "PublicClientApplication", return_value=mock_app):
-        auth = auth_mod.GraphAuthenticator(
+        auth = auth_mod.Authenticator(
             tenant_id="tenant-id",
             client_id="client-id",
             auth_mode="delegated",
@@ -230,7 +230,7 @@ def test_graph_authenticator_delegated_interactive_timeout() -> None:
         with pytest.raises(
             RuntimeError, match="Failed to acquire delegated token: timeout"
         ):
-            auth_mod.GraphAuthenticator(
+            auth_mod.Authenticator(
                 tenant_id="tenant-id",
                 client_id="client-id",
                 auth_mode="delegated",
@@ -250,7 +250,7 @@ def test_graph_authenticator_delegated_interactive_cancellation() -> None:
         with pytest.raises(
             RuntimeError, match="Failed to acquire delegated token: access_denied"
         ):
-            auth_mod.GraphAuthenticator(
+            auth_mod.Authenticator(
                 tenant_id="tenant-id",
                 client_id="client-id",
                 auth_mode="delegated",
@@ -270,7 +270,7 @@ def test_graph_authenticator_delegated_interactive_invalid_scope() -> None:
         with pytest.raises(
             RuntimeError, match="Failed to acquire delegated token: invalid_scope"
         ):
-            auth_mod.GraphAuthenticator(
+            auth_mod.Authenticator(
                 tenant_id="tenant-id",
                 client_id="client-id",
                 auth_mode="delegated",
@@ -296,7 +296,7 @@ def test_graph_authenticator_delegated_device_code_cancellation() -> None:
             RuntimeError,
             match="Failed to acquire delegated token: authorization_declined",
         ):
-            auth_mod.GraphAuthenticator(
+            auth_mod.Authenticator(
                 tenant_id="tenant-id",
                 client_id="client-id",
                 auth_mode="delegated",
@@ -321,7 +321,7 @@ def test_graph_authenticator_delegated_device_code_timeout() -> None:
             RuntimeError,
             match="Failed to acquire delegated token: authorization_pending_timeout",
         ):
-            auth_mod.GraphAuthenticator(
+            auth_mod.Authenticator(
                 tenant_id="tenant-id",
                 client_id="client-id",
                 auth_mode="delegated",
@@ -341,7 +341,7 @@ def test_graph_authenticator_delegated_device_code_invalid_scope() -> None:
         with pytest.raises(
             RuntimeError, match="Failed to acquire delegated token: invalid_scope"
         ):
-            auth_mod.GraphAuthenticator(
+            auth_mod.Authenticator(
                 tenant_id="tenant-id",
                 client_id="client-id",
                 auth_mode="delegated",
@@ -353,14 +353,14 @@ def test_graph_authenticator_delegated_device_code_invalid_scope() -> None:
 def test_graph_settings_resolves_defaults_and_overrides(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """GraphSettings should centralize defaults and environment overrides."""
+    """Settings should centralize defaults and environment overrides."""
     monkeypatch.setenv("GRAPH_AUTH_MODE", "delegated")
     monkeypatch.setenv("AZURE_REDIRECT_URI", "http://localhost:8000")
     monkeypatch.setenv("GRAPH_DELEGATED_LOGIN_MODE", "device_code")
     monkeypatch.setenv("GRAPH_DELEGATED_SCOPES", "scope.one, scope.two openid profile")
     monkeypatch.setenv("GRAPH_AUTH_POPUP_SIZE", "640x720")
 
-    settings = GraphSettings.from_sources(
+    settings = Settings.from_sources(
         tenant_id="tenant-id",
         client_id="client-id",
         sharepoint_site_id="site-id",
@@ -372,7 +372,7 @@ def test_graph_settings_resolves_defaults_and_overrides(
     assert settings.delegated_scopes == ("scope.one", "scope.two")
     assert settings.auth_popup_size == "640x720"
     assert (
-        settings.auth_mode == GRAPH_DEFAULTS.auth_mode
+        settings.auth_mode == DEFAULTS.auth_mode
         or settings.auth_mode == "delegated"
     )
 
@@ -416,3 +416,4 @@ def test_get_messages_unknown_locale_falls_back_to_english() -> None:
     messages = get_messages("fr")
 
     assert messages == EN_MESSAGES
+

@@ -1,22 +1,22 @@
-"""
-lists.py — SharePoint list operations via Microsoft Graph.
+﻿"""
+lists.py - SharePoint list operations via Microsoft Graph.
 
-The primary API is the ``GraphList`` class, which validates configuration and
+The primary API is the ``SPList`` class, which validates configuration and
 tests list access on initialization.
 
 Covered operations:
-    get_views             — list available views (id, name)
-    get_view_columns      — retrieve columns visible in a specific view
-    get_columns           — retrieve all column definitions (name → displayName mapping)
-    get_schema            — retrieve editable column schema (display names, types, choices)
-    get_field_types       — retrieve displayName → Graph type mapping
-    get_items             — retrieve items with displayName keys and automatic pagination
-    get_items_dataframe   — retrieve items directly as pandas DataFrame
-    get_item_template     — return an empty item dict ready to be filled and saved
-    validate_item         — validate a dict against the column schema before sending
-    save_item             — create or update an item (auto-detected by presence of _id)
-    save_items            — batch create/update, stopping on first error
-    save_dataframe        — batch create/update from pandas DataFrame rows
+    get_views             - list available views (id, name)
+    get_view_columns      - retrieve columns visible in a specific view
+    get_columns           - retrieve all column definitions (name -> displayName mapping)
+    get_schema            - retrieve editable column schema (display names, types, choices)
+    get_field_types       - retrieve displayName -> Graph type mapping
+    get_items             - retrieve items with displayName keys and automatic pagination
+    get_items_dataframe   - retrieve items directly as pandas DataFrame
+    get_item_template     - return an empty item dict ready to be filled and saved
+    validate_item         - validate a dict against the column schema before sending
+    save_item             - create or update an item (auto-detected by presence of _id)
+    save_items            - batch create/update, stopping on first error
+    save_dataframe        - batch create/update from pandas DataFrame rows
 """
 
 from __future__ import annotations
@@ -29,8 +29,8 @@ import pandas as pd
 import requests
 from dateutil import parser as dateutil_parser
 
-from msgraphclient.auth import GraphClient
-from msgraphclient.client import GRAPH_BASE_URL
+from ezspi.auth import Client
+from ezspi.client import GRAPH_BASE_URL
 
 
 _UNIMPLEMENTED_COLUMN_TYPES: dict[str, str] = {
@@ -116,7 +116,7 @@ _TYPE_FACET_KEYS: set[str] = {
 }
 
 
-class GraphList:
+class SPList:
     """SharePoint list operations backed by Microsoft Graph.
 
     On initialization, resolves the site ID from
@@ -136,20 +136,20 @@ class GraphList:
     def __init__(
         self,
         list_id: str,
-        client: GraphClient | None = None,
+        client: Client | None = None,
     ) -> None:
         """Initialize list operations.
 
         Args:
             list_id: SharePoint list ID (required).
-            client: Optional pre-configured GraphClient instance.
+            client: Optional pre-configured Client instance.
         """
-        self.client = client or GraphClient()
+        self.client = client or Client()
         self.site_id: str = self._site_id_from_client(self.client)
         if not self.site_id:
             raise EnvironmentError(
                 "SharePoint site ID could not be resolved from client. "
-                "Ensure GraphClient was initialized with SHAREPOINT_SITE_ID."
+                "Ensure Client was initialized with SHAREPOINT_SITE_ID."
             )
         self.list_id: str = list_id
 
@@ -187,7 +187,7 @@ class GraphList:
     # -------------------------------------------------------------------------
 
     @staticmethod
-    def _site_id_from_client(client: GraphClient) -> str:
+    def _site_id_from_client(client: Client) -> str:
         """Return site id from the client's sharepoint_site_id attribute."""
         site_id = getattr(client, "sharepoint_site_id", None)
         if isinstance(site_id, str) and site_id:
@@ -276,7 +276,7 @@ class GraphList:
                 {"implemented": False},
             )
 
-        original_type_name = GraphList._extract_unknown_type_name(col)
+        original_type_name = SPList._extract_unknown_type_name(col)
         if original_type_name is not None:
             return original_type_name, [], {"implemented": False}
 
@@ -302,7 +302,7 @@ class GraphList:
             return True
         if any(facet_key in col for facet_key in _TYPE_FACET_KEYS):
             return True
-        return GraphList._extract_unknown_type_name(col) is not None
+        return SPList._extract_unknown_type_name(col) is not None
 
     def _get_column_details(self, column_id: str) -> dict:
         """Fetch the full Graph definition for one column.
@@ -492,7 +492,7 @@ class GraphList:
         """GET all pages from a Graph collection endpoint, following nextLink.
 
         ``@odata.nextLink`` values returned by Graph are full URLs.  The
-        ``GraphClient.get`` method prepends ``GRAPH_BASE_URL``, so the base
+        ``Client.get`` method prepends ``GRAPH_BASE_URL``, so the base
         prefix is stripped before each subsequent request.
 
         Args:
@@ -952,3 +952,4 @@ class GraphList:
         for item in items:
             results.append(self.save_item(item))
         return results
+

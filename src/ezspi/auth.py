@@ -1,11 +1,11 @@
-"""MSAL authentication helper for Microsoft Graph.
+﻿"""MSAL authentication helper for Microsoft Graph.
 
 Supports two authentication modes:
 - client_credentials (app-only)
 - delegated (user-interactive)
 
 Credentials are received as explicit parameters (environment reading is
-handled by :class:`msgraphclient.client.GraphClient`).
+handled by :class:`ezspi.client.Client`).
 """
 
 import os
@@ -13,17 +13,17 @@ from collections.abc import Sequence
 
 import msal
 
-from msgraphclient.client import GraphAuthorizationError, GraphClient  # noqa: F401
-from msgraphclient.messages import get_messages
-from msgraphclient.settings import (
-    GRAPH_DEFAULTS,
-    GraphSettings,
+from ezspi.client import AuthorizationError, Client  # noqa: F401
+from ezspi.messages import get_messages
+from ezspi.settings import (
+    DEFAULTS,
+    Settings,
     parse_popup_size,
 )
 
 # Public API exported by this module.
-# GraphAuthorizationError and GraphClient are re-exported from msgraphclient.client.
-__all__ = ["GraphAuthorizationError", "GraphClient", "GraphAuthenticator"]
+# AuthorizationError and Client are re-exported from ezspi.client.
+__all__ = ["AuthorizationError", "Client", "Authenticator"]
 
 
 def _load_token_cache() -> "msal.SerializableTokenCache":
@@ -48,7 +48,7 @@ def _normalize_client_credential_scopes(scopes: Sequence[str] | str) -> list[str
 
 def _find_chromium_app_browser(
     name: str = "_msal_popup",
-    popup_size: str = GRAPH_DEFAULTS.auth_popup_size,
+    popup_size: str = DEFAULTS.auth_popup_size,
 ) -> str | None:
     """Register a Chromium-based browser in app mode (no address bar or tabs).
 
@@ -56,7 +56,7 @@ def _find_chromium_app_browser(
     the browser with the ``--app`` flag so the auth page opens in a minimal
     app window instead of a regular tab in an existing browser instance.
 
-    An isolated profile stored under ``%LOCALAPPDATA%\\MSGraphClient\\popup-profile``
+    An isolated profile stored under ``%LOCALAPPDATA%\\ezspi\\popup-profile``
     is used so Chromium always applies ``--window-size`` without restoring any
     previously saved window geometry.  The ``--no-signin`` and
     ``--disable-sync`` flags suppress the browser's own account sign-in prompt
@@ -76,7 +76,7 @@ def _find_chromium_app_browser(
 
     popup_profile = os.path.join(
         os.environ.get("LOCALAPPDATA") or os.path.expanduser("~"),
-        "MSGraphClient",
+        "ezspi",
         "popup-profile",
     )
     os.makedirs(popup_profile, exist_ok=True)
@@ -109,7 +109,7 @@ def _find_chromium_app_browser(
     return None
 
 
-class GraphAuthenticator:
+class Authenticator:
     """Authenticate with Azure AD and expose a Graph access token.
 
     On initialization, supports two modes:
@@ -138,12 +138,12 @@ class GraphAuthenticator:
         redirect_uri: str = "http://localhost",
         delegated_scopes: list[str] | None = None,
         delegated_login_mode: str = "interactive",
-        auth_popup_size: str = GRAPH_DEFAULTS.auth_popup_size,
+        auth_popup_size: str = DEFAULTS.auth_popup_size,
         message_locale: str | None = None,
         token: str | None = None,
         sharepoint_site_id: str = "",
     ) -> None:
-        settings = GraphSettings.from_sources(
+        settings = Settings.from_sources(
             tenant_id=tenant_id,
             client_id=client_id,
             client_secret=client_secret,
@@ -185,8 +185,8 @@ class GraphAuthenticator:
         Produces a single error message listing all missing items.
         """
         env_path = self._env_file_location()
-        docs_url = "https://github.com/FSLobao/MSGraphClient/wiki/Configuration"
-        repo_url = "https://github.com/FSLobao/MSGraphClient"
+        docs_url = "https://github.com/FSLobao/ezspi/wiki/Configuration"
+        repo_url = "https://github.com/FSLobao/ezspi"
 
         # Check each required variable (argument OR environment)
         required = [
@@ -296,7 +296,7 @@ class GraphAuthenticator:
             client_credential=client_secret,
             authority=authority,
         )
-        scopes = _normalize_client_credential_scopes(GRAPH_DEFAULTS.graph_scopes)
+        scopes = _normalize_client_credential_scopes(DEFAULTS.graph_scopes)
         result = app.acquire_token_for_client(scopes=scopes)
         return result if isinstance(result, dict) else None
 
@@ -315,7 +315,7 @@ class GraphAuthenticator:
 
         MSAL 1.x uses a ``port`` integer parameter (not ``redirect_uri``) for
         acquire_token_interactive.  The port is extracted from ``redirect_uri``
-        when it contains one (e.g. "http://localhost:8356" → 8356); otherwise
+        when it contains one (e.g. "http://localhost:8356" -> 8356); otherwise
         MSAL picks a random available port.
         """
         from urllib.parse import urlparse
@@ -381,3 +381,4 @@ class GraphAuthenticator:
             )
 
         return result if isinstance(result, dict) else None
+

@@ -1,4 +1,4 @@
-"""Localized user-facing messages for MSGraphClient."""
+﻿"""Localized user-facing messages for ezspi."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from pathlib import Path
 
 
 @dataclass(frozen=True, slots=True)
-class GraphMessages:
+class Messages:
     """Container for translatable user-facing text."""
 
     missing_credentials_header: str
@@ -32,7 +32,7 @@ class GraphMessages:
 
 _DEFAULT_LOCALE = "en"
 _LOCALE_DIR = Path(__file__).with_name("locales")
-_MESSAGE_KEYS = tuple(field.name for field in fields(GraphMessages))
+_MESSAGE_KEYS = tuple(field.name for field in fields(Messages))
 _ENGLISH_FALLBACK: dict[str, str] = {
     "missing_credentials_header": "Missing configuration values (argument or environment): {missing}",
     "missing_credentials_instructions": "Create a .env file in your project root:\n  {env_path}",
@@ -53,7 +53,7 @@ _ENGLISH_FALLBACK: dict[str, str] = {
     "delegated_token_acquire_failed": "Failed to acquire delegated token: {error} - {description}",
     "device_code_prompt": "Complete device authentication to continue.",
     "auth_success_html_text": "Authentication completed. This window should close shortly, if not, please close it manually.",
-    "no_valid_token": "No valid token available. Ensure credentials are configured so GraphAuthenticator can acquire a token.",
+    "no_valid_token": "No valid token available. Ensure credentials are configured so Authenticator can acquire a token.",
 }
 
 
@@ -79,19 +79,19 @@ def _read_locale_bundle(locale: str) -> dict[str, str]:
     }
 
 
-def _build_messages(bundle: dict[str, str], fallback: dict[str, str]) -> GraphMessages:
-    """Build a complete GraphMessages instance using fallback values when needed."""
+def _build_messages(bundle: dict[str, str], fallback: dict[str, str]) -> Messages:
+    """Build a complete Messages instance using fallback values when needed."""
     values: dict[str, str] = {}
     for key in _MESSAGE_KEYS:
         resolved = bundle.get(key)
         values[key] = (
             resolved if isinstance(resolved, str) and resolved else fallback[key]
         )
-    return GraphMessages(**values)
+    return Messages(**values)
 
 
 @lru_cache(maxsize=1)
-def _load_catalog() -> dict[str, GraphMessages]:
+def _load_catalog() -> dict[str, Messages]:
     """Load the message catalog from locale bundles with English fallback."""
     english_bundle = {**_ENGLISH_FALLBACK, **_read_locale_bundle("en")}
     english_messages = _build_messages(english_bundle, _ENGLISH_FALLBACK)
@@ -103,7 +103,7 @@ def _load_catalog() -> dict[str, GraphMessages]:
 
 
 EN_MESSAGES = _load_catalog()["en"]
-MESSAGE_CATALOG: dict[str, GraphMessages] = _load_catalog()
+MESSAGE_CATALOG: dict[str, Messages] = _load_catalog()
 
 
 def _normalize_locale(locale: str | None) -> str:
@@ -113,7 +113,8 @@ def _normalize_locale(locale: str | None) -> str:
     return normalized.split("-", 1)[0]
 
 
-def get_messages(locale: str | None = None) -> GraphMessages:
+def get_messages(locale: str | None = None) -> Messages:
     """Return the message bundle for a requested locale, defaulting to English."""
     language = _normalize_locale(locale)
     return MESSAGE_CATALOG.get(language, EN_MESSAGES)
+

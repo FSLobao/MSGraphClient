@@ -12,9 +12,9 @@ Authentication mode is controlled by .env (GRAPH_AUTH_MODE). This script works f
 import os
 from typing import Any
 
-from msgraphclient.auth import GraphAuthorizationError, GraphClient
-from msgraphclient.drive import GraphDrive
-from msgraphclient.lists import GraphList
+from ezspi.auth import AuthorizationError, Client
+from ezspi.drive import SPLibrary
+from ezspi.lists import SPList
 
 
 def _safe(value: object) -> str:
@@ -25,7 +25,7 @@ def _safe(value: object) -> str:
     return text if text else "-"
 
 
-def _print_auth_details(client: GraphClient) -> None:
+def _print_auth_details(client: Client) -> None:
     """Print non-secret authentication details, including delegated user attributes."""
     auth = client.authenticator
 
@@ -56,15 +56,15 @@ def _print_auth_details(client: GraphClient) -> None:
 
 
 def run_example_site_contents(
-    client: GraphClient | None = None,
-    drive: GraphDrive | None = None,
-    list_client: GraphList | None = None,
+    client: Client | None = None,
+    drive: SPLibrary | None = None,
+    list_client: SPList | None = None,
     drive_id: str | None = None,
     list_id: str | None = None,
     show_output: bool = True,
 ) -> dict[str, Any]:
     """Return site details and reusable objects for downstream examples."""
-    resolved_client = client or GraphClient()
+    resolved_client = client or Client()
 
     if show_output:
         print(
@@ -81,7 +81,7 @@ def run_example_site_contents(
     if resolved_drive is None:
         resolved_drive_id = drive_id or os.environ.get("SHAREPOINT_DRIVE_ID", "")
         if resolved_drive_id:
-            resolved_drive = GraphDrive(
+            resolved_drive = SPLibrary(
                 drive_id=resolved_drive_id, client=resolved_client
             )
 
@@ -89,7 +89,7 @@ def run_example_site_contents(
     if resolved_list_client is None:
         resolved_list_id = list_id or os.environ.get("SHAREPOINT_LIST_ID", "")
         if resolved_list_id:
-            resolved_list_client = GraphList(
+            resolved_list_client = SPList(
                 list_id=resolved_list_id,
                 client=resolved_client,
             )
@@ -144,6 +144,7 @@ def main() -> None:
 if __name__ == "__main__":
     try:
         main()
-    except GraphAuthorizationError as error:
+    except AuthorizationError as error:
         print("Authorization failed for current authentication flow.")
-        print(GraphClient.format_http_error(error))
+        print(Client.format_http_error(error))
+

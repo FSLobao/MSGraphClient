@@ -12,5 +12,5 @@
     "delegated_token_acquire_failed": "Falha ao obter token delegado: {error} - {description}",
     "device_code_prompt": "Conclua a autenticacao por codigo de dispositivo para continuar.",
     "auth_success_html_text": "Autenticacao concluida. Voce pode fechar esta janela",
-    "no_valid_token": "Nenhum token valido disponivel. Garanta que as credenciais estejam configuradas para que o GraphAuthenticator possa obter um token."
+    "no_valid_token": "Nenhum token valido disponivel. Garanta que as credenciais estejam configuradas para que o Authenticator possa obter um token."
 }

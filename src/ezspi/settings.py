@@ -1,4 +1,4 @@
-"""Shared configuration defaults and resolution helpers for MSGraphClient."""
+﻿"""Shared configuration defaults and resolution helpers for ezspi."""
 
 from __future__ import annotations
 
@@ -6,11 +6,11 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 import os
 
-from msgraphclient.messages import get_messages
+from ezspi.messages import get_messages
 
 
 @dataclass(frozen=True, slots=True)
-class GraphDefaults:
+class Defaults:
     """Centralized defaults used by the authentication and client layers."""
 
     graph_api_base_url: str = "https://graph.microsoft.com/v1.0"
@@ -22,7 +22,7 @@ class GraphDefaults:
     auth_popup_size: str = "520x680"
 
 
-GRAPH_DEFAULTS = GraphDefaults()
+DEFAULTS = Defaults()
 
 _MSAL_RESERVED_SCOPES: frozenset[str] = frozenset(
     {"openid", "profile", "offline_access"}
@@ -30,7 +30,7 @@ _MSAL_RESERVED_SCOPES: frozenset[str] = frozenset(
 
 
 @dataclass(frozen=True, slots=True)
-class GraphSettings:
+class Settings:
     """Resolved runtime settings for Graph authentication and SharePoint access."""
 
     tenant_id: str
@@ -58,8 +58,8 @@ class GraphSettings:
         delegated_login_mode: str | None = None,
         auth_popup_size: str | None = None,
         env: Mapping[str, str] | None = None,
-        defaults: GraphDefaults = GRAPH_DEFAULTS,
-    ) -> "GraphSettings":
+        defaults: Defaults = DEFAULTS,
+    ) -> "Settings":
         """Resolve configuration values using explicit arguments, environment, then defaults."""
 
         env_mapping = env or os.environ
@@ -137,7 +137,7 @@ def _dedupe_scopes(scopes: Sequence[str]) -> list[str]:
 
 def _parse_delegated_scopes(
     raw_scopes: str,
-    defaults: GraphDefaults = GRAPH_DEFAULTS,
+    defaults: Defaults = DEFAULTS,
 ) -> tuple[str, ...]:
     """Parse delegated scopes from a delimited string or fall back to defaults."""
 
@@ -149,7 +149,7 @@ def _parse_delegated_scopes(
 
 
 def parse_popup_size(
-    raw_size: str | None, defaults: GraphDefaults = GRAPH_DEFAULTS
+    raw_size: str | None, defaults: Defaults = DEFAULTS
 ) -> tuple[int, int]:
     """Parse a WIDTHxHEIGHT popup size string, falling back to the default value."""
 
@@ -160,3 +160,4 @@ def parse_popup_size(
     except (ValueError, TypeError):
         fallback_width, fallback_height = defaults.auth_popup_size.lower().split("x", 1)
         return int(fallback_width), int(fallback_height)
+

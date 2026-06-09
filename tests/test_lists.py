@@ -8,7 +8,7 @@ import pandas as pd
 import pytest
 import requests
 
-import msgraphclient.lists as lists_mod
+import ezspi.lists as lists_mod
 
 
 def _sample_columns() -> list[dict]:
@@ -82,7 +82,7 @@ def env(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def _mock_client(return_value: dict | None = None) -> MagicMock:
-    """Create a mock GraphClient instance for testing."""
+    """Create a mock Client instance for testing."""
     client = MagicMock()
     client.sharepoint_site_id = "site-xyz"
     client.get.side_effect = [
@@ -101,7 +101,7 @@ def _mock_client(return_value: dict | None = None) -> MagicMock:
 
 
 def test_graph_list_initialization_loads_basic_metadata(env: None) -> None:
-    """Test that GraphList validates access and stores basic list attributes."""
+    """Test that SPList validates access and stores basic list attributes."""
     mock_client = MagicMock()
     mock_client.sharepoint_site_id = "site-xyz"
     mock_client.get.side_effect = [
@@ -114,7 +114,7 @@ def test_graph_list_initialization_loads_basic_metadata(env: None) -> None:
         {"value": _sample_columns()},
     ]
 
-    lst = lists_mod.GraphList(list_id="list-abc", client=mock_client)
+    lst = lists_mod.SPList(list_id="list-abc", client=mock_client)
 
     assert lst.list_graph_id == "list-abc"
     assert lst.list_name == "MonitorRNI"
@@ -125,7 +125,7 @@ def test_graph_list_initialization_loads_basic_metadata(env: None) -> None:
 def test_graph_list_initialization_with_explicit_arguments(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Test GraphList accepts explicit list id and injected client."""
+    """Test SPList accepts explicit list id and injected client."""
     monkeypatch.delenv("SHAREPOINT_SITE_ID", raising=False)
     monkeypatch.delenv("SHAREPOINT_LIST_ID", raising=False)
 
@@ -141,7 +141,7 @@ def test_graph_list_initialization_with_explicit_arguments(
         {"value": _sample_columns()},
     ]
 
-    lst = lists_mod.GraphList(
+    lst = lists_mod.SPList(
         list_id="list-custom",
         client=mock_client,
     )
@@ -156,7 +156,7 @@ def test_graph_list_initialization_with_explicit_arguments(
 def test_graph_list_initialization_uses_site_id_from_client_authenticator(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Test GraphList derives site_id from client.authenticator when omitted."""
+    """Test SPList derives site_id from client.authenticator when omitted."""
     monkeypatch.delenv("SHAREPOINT_SITE_ID", raising=False)
     monkeypatch.delenv("SHAREPOINT_LIST_ID", raising=False)
 
@@ -172,7 +172,7 @@ def test_graph_list_initialization_uses_site_id_from_client_authenticator(
         {"value": _sample_columns()},
     ]
 
-    lst = lists_mod.GraphList(
+    lst = lists_mod.SPList(
         list_id="list-client",
         client=mock_client,
     )
@@ -186,17 +186,17 @@ def test_graph_list_initialization_uses_site_id_from_client_authenticator(
 
 
 def test_graph_list_missing_site_id() -> None:
-    """Test that GraphList raises when site_id cannot be resolved from client."""
+    """Test that SPList raises when site_id cannot be resolved from client."""
     mock_client = MagicMock(spec=[])
 
     with pytest.raises(EnvironmentError, match="site ID could not be resolved"):
-        lists_mod.GraphList(list_id="list-abc", client=mock_client)
+        lists_mod.SPList(list_id="list-abc", client=mock_client)
 
 
 def test_graph_list_missing_list_id() -> None:
-    """Test that GraphList requires list_id as a parameter."""
+    """Test that SPList requires list_id as a parameter."""
     with pytest.raises(TypeError):
-        lists_mod.GraphList(client=MagicMock())  # type: ignore[call-arg]
+        lists_mod.SPList(client=MagicMock())  # type: ignore[call-arg]
 
 
 def test_get_columns_returns_value(env: None) -> None:
@@ -207,7 +207,7 @@ def test_get_columns_returns_value(env: None) -> None:
     ]
     mock_client = _mock_client(return_value={"value": columns})
 
-    list_client = lists_mod.GraphList(list_id="list-abc", client=mock_client)
+    list_client = lists_mod.SPList(list_id="list-abc", client=mock_client)
     result = list_client.get_columns()
 
     assert result == columns
@@ -222,7 +222,7 @@ def test_get_columns_can_filter_by_names(env: None) -> None:
     ]
     mock_client = _mock_client(return_value={"value": columns})
 
-    list_client = lists_mod.GraphList(list_id="list-abc", client=mock_client)
+    list_client = lists_mod.SPList(list_id="list-abc", client=mock_client)
     result = list_client.get_columns(names=["Title", "field_1"])
 
     assert result == columns
@@ -240,7 +240,7 @@ def test_get_views_returns_value(env: None) -> None:
     ]
     mock_client = _mock_client(return_value={"value": views})
 
-    list_client = lists_mod.GraphList(list_id="list-abc", client=mock_client)
+    list_client = lists_mod.SPList(list_id="list-abc", client=mock_client)
     result = list_client.get_views()
 
     assert result == views
@@ -275,7 +275,7 @@ def test_get_views_fallback_returns_plain_array(env: None) -> None:
         {"id": "list-abc", "name": "MonitorRNI", "views": views},
     ]
 
-    list_client = lists_mod.GraphList(list_id="list-abc", client=mock_client)
+    list_client = lists_mod.SPList(list_id="list-abc", client=mock_client)
     result = list_client.get_views()
 
     assert result == views
@@ -301,7 +301,7 @@ def test_get_views_fallback_returns_wrapped_value(env: None) -> None:
         {"id": "list-abc", "name": "MonitorRNI", "views": {"value": views}},
     ]
 
-    list_client = lists_mod.GraphList(list_id="list-abc", client=mock_client)
+    list_client = lists_mod.SPList(list_id="list-abc", client=mock_client)
     result = list_client.get_views()
 
     assert result == views
@@ -323,7 +323,7 @@ def test_get_views_returns_empty_when_both_endpoints_fail(env: None) -> None:
         requests.HTTPError("403 Forbidden"),
     ]
 
-    list_client = lists_mod.GraphList(list_id="list-abc", client=mock_client)
+    list_client = lists_mod.SPList(list_id="list-abc", client=mock_client)
     result = list_client.get_views()
 
     assert result == []
@@ -331,7 +331,7 @@ def test_get_views_returns_empty_when_both_endpoints_fail(env: None) -> None:
 
 def test_load_column_schema_filters_metadata(env: None) -> None:
     """Schema loading should exclude hidden/read-only metadata columns."""
-    list_client = lists_mod.GraphList(list_id="list-abc", client=_mock_client())
+    list_client = lists_mod.SPList(list_id="list-abc", client=_mock_client())
 
     assert [entry["display_name"] for entry in list_client.column_schema] == [
         "Title",
@@ -346,7 +346,7 @@ def test_load_column_schema_filters_metadata(env: None) -> None:
 
 def test_get_schema_returns_editable_columns(env: None) -> None:
     """get_schema should expose simplified schema metadata for callers."""
-    list_client = lists_mod.GraphList(list_id="list-abc", client=_mock_client())
+    list_client = lists_mod.SPList(list_id="list-abc", client=_mock_client())
 
     assert list_client.get_schema() == [
         {
@@ -431,7 +431,7 @@ def test_get_schema_fetches_column_details_for_ambiguous_image_columns(
         },
     ]
 
-    list_client = lists_mod.GraphList(list_id="list-abc", client=mock_client)
+    list_client = lists_mod.SPList(list_id="list-abc", client=mock_client)
 
     assert list_client.get_schema() == [
         {
@@ -473,7 +473,7 @@ def test_get_schema_preserves_unknown_sharepoint_type_name(env: None) -> None:
         },
     ]
 
-    list_client = lists_mod.GraphList(list_id="list-abc", client=mock_client)
+    list_client = lists_mod.SPList(list_id="list-abc", client=mock_client)
 
     assert list_client.get_schema() == [
         {
@@ -510,7 +510,7 @@ def test_get_schema_preserves_unknown_type_facet_name(env: None) -> None:
         },
     ]
 
-    list_client = lists_mod.GraphList(list_id="list-abc", client=mock_client)
+    list_client = lists_mod.SPList(list_id="list-abc", client=mock_client)
 
     assert list_client.get_schema() == [
         {
@@ -525,7 +525,7 @@ def test_get_schema_preserves_unknown_type_facet_name(env: None) -> None:
 
 def test_get_field_types_returns_mapping(env: None) -> None:
     """get_field_types should map display names to Graph types."""
-    list_client = lists_mod.GraphList(list_id="list-abc", client=_mock_client())
+    list_client = lists_mod.SPList(list_id="list-abc", client=_mock_client())
 
     assert list_client.get_field_types() == {
         "Title": "text",
@@ -557,7 +557,7 @@ def test_get_items_paginates_all_pages(env: None) -> None:
         {"value": [{"id": "2", "fields": {"Title": "Item B", "field_1": "Beta"}}]},
     ]
 
-    list_client = lists_mod.GraphList(list_id="list-abc", client=mock_client)
+    list_client = lists_mod.SPList(list_id="list-abc", client=mock_client)
     result = list_client.get_items()
 
     assert result == [
@@ -579,7 +579,7 @@ def test_get_items_dataframe_returns_dataframe(env: None) -> None:
         }
     ]
     mock_client = _mock_client(return_value={"value": items})
-    list_client = lists_mod.GraphList(list_id="list-abc", client=mock_client)
+    list_client = lists_mod.SPList(list_id="list-abc", client=mock_client)
 
     df = list_client.get_items_dataframe(select=["Title", "Customer Name", "Status"])
 
@@ -605,7 +605,7 @@ def test_get_items_translates_display_names(env: None) -> None:
         }
     ]
     mock_client = _mock_client(return_value={"value": items})
-    list_client = lists_mod.GraphList(list_id="list-abc", client=mock_client)
+    list_client = lists_mod.SPList(list_id="list-abc", client=mock_client)
 
     result = list_client.get_items(select=["Title", "Status"])
 
@@ -619,7 +619,7 @@ def test_get_items_translates_display_names(env: None) -> None:
 
 def test_get_item_template_structure(env: None) -> None:
     """Item template should expose only writable columns."""
-    list_client = lists_mod.GraphList(list_id="list-abc", client=_mock_client())
+    list_client = lists_mod.SPList(list_id="list-abc", client=_mock_client())
 
     assert list_client.get_item_template() == {
         "Title": None,
@@ -632,7 +632,7 @@ def test_get_item_template_structure(env: None) -> None:
 
 def test_validate_item_type_error(env: None) -> None:
     """validate_item should reject values that do not match the schema type."""
-    list_client = lists_mod.GraphList(list_id="list-abc", client=_mock_client())
+    list_client = lists_mod.SPList(list_id="list-abc", client=_mock_client())
 
     with pytest.raises(TypeError, match="expects int or float"):
         list_client._field_types["Customer Name"] = "number"
@@ -641,7 +641,7 @@ def test_validate_item_type_error(env: None) -> None:
 
 def test_validate_item_choice_invalid(env: None) -> None:
     """Choice validation should reject values outside the SharePoint choice set."""
-    list_client = lists_mod.GraphList(list_id="list-abc", client=_mock_client())
+    list_client = lists_mod.SPList(list_id="list-abc", client=_mock_client())
 
     with pytest.raises(ValueError, match="allowed choices"):
         list_client.validate_item({"Title": "Item", "Status": "Pending"})
@@ -649,7 +649,7 @@ def test_validate_item_choice_invalid(env: None) -> None:
 
 def test_validate_item_unimplemented_type(env: None) -> None:
     """Unsupported write types should fail with an explicit validation error."""
-    list_client = lists_mod.GraphList(list_id="list-abc", client=_mock_client())
+    list_client = lists_mod.SPList(list_id="list-abc", client=_mock_client())
 
     with pytest.raises(ValueError, match="type 'personOrGroup'.*not implemented"):
         list_client.validate_item({"Title": "Item", "Assigned To": "user@example.com"})
@@ -665,7 +665,7 @@ def test_validate_item_unimplemented_type(env: None) -> None:
 
 def test_validate_item_unknown_type_fails_closed(env: None) -> None:
     """Missing schema type metadata should never fall back to a writable text field."""
-    list_client = lists_mod.GraphList(list_id="list-abc", client=_mock_client())
+    list_client = lists_mod.SPList(list_id="list-abc", client=_mock_client())
     list_client._field_types["Customer Name"] = "unknownFacet"
     list_client._field_validation["Customer Name"] = {"implemented": False}
 
@@ -675,14 +675,14 @@ def test_validate_item_unknown_type_fails_closed(env: None) -> None:
 
 def test_validate_item_datetime_string(env: None) -> None:
     """Datetime strings in valid format should be accepted."""
-    list_client = lists_mod.GraphList(list_id="list-abc", client=_mock_client())
+    list_client = lists_mod.SPList(list_id="list-abc", client=_mock_client())
 
     list_client.validate_item({"Title": "Item", "Start Date": "2026-05-27T10:30:00Z"})
 
 
 def test_validate_item_text_rejects_newline(env: None) -> None:
     """Single-line text columns should reject values with newlines."""
-    list_client = lists_mod.GraphList(list_id="list-abc", client=_mock_client())
+    list_client = lists_mod.SPList(list_id="list-abc", client=_mock_client())
 
     with pytest.raises(TypeError, match="single-line text"):
         list_client.validate_item({"Title": "Line1\nLine2"})
@@ -690,7 +690,7 @@ def test_validate_item_text_rejects_newline(env: None) -> None:
 
 def test_validate_item_text_rejects_over_255(env: None) -> None:
     """Single-line text columns should reject values exceeding 255 chars."""
-    list_client = lists_mod.GraphList(list_id="list-abc", client=_mock_client())
+    list_client = lists_mod.SPList(list_id="list-abc", client=_mock_client())
 
     with pytest.raises(ValueError, match="exceed 255 characters"):
         list_client.validate_item({"Title": "x" * 256})
@@ -698,7 +698,7 @@ def test_validate_item_text_rejects_over_255(env: None) -> None:
 
 def test_validate_item_note_rejects_over_63999(env: None) -> None:
     """Multi-line note columns should reject values exceeding 63999 chars."""
-    list_client = lists_mod.GraphList(list_id="list-abc", client=_mock_client())
+    list_client = lists_mod.SPList(list_id="list-abc", client=_mock_client())
     list_client._field_types["Customer Name"] = "note"
 
     with pytest.raises(ValueError, match="exceed 63999 characters"):
@@ -707,7 +707,7 @@ def test_validate_item_note_rejects_over_63999(env: None) -> None:
 
 def test_validate_item_note_accepts_newline(env: None) -> None:
     """Multi-line note columns should accept values with newlines."""
-    list_client = lists_mod.GraphList(list_id="list-abc", client=_mock_client())
+    list_client = lists_mod.SPList(list_id="list-abc", client=_mock_client())
     # Override type for testing
     list_client._field_types["Customer Name"] = "note"
 
@@ -716,7 +716,7 @@ def test_validate_item_note_accepts_newline(env: None) -> None:
 
 def test_validate_item_text_respects_custom_max_length(env: None) -> None:
     """Single-line text should use max_length from column validation metadata."""
-    list_client = lists_mod.GraphList(list_id="list-abc", client=_mock_client())
+    list_client = lists_mod.SPList(list_id="list-abc", client=_mock_client())
     list_client._field_validation["Title"] = {"max_length": 50}
 
     # Exactly 50 chars should pass
@@ -729,7 +729,7 @@ def test_validate_item_text_respects_custom_max_length(env: None) -> None:
 
 def test_validate_item_number_below_minimum(env: None) -> None:
     """Number columns should reject values below the configured minimum."""
-    list_client = lists_mod.GraphList(list_id="list-abc", client=_mock_client())
+    list_client = lists_mod.SPList(list_id="list-abc", client=_mock_client())
     list_client._field_types["Customer Name"] = "number"
     list_client._field_validation["Customer Name"] = {"minimum": 0, "maximum": 100}
 
@@ -739,7 +739,7 @@ def test_validate_item_number_below_minimum(env: None) -> None:
 
 def test_validate_item_number_above_maximum(env: None) -> None:
     """Number columns should reject values above the configured maximum."""
-    list_client = lists_mod.GraphList(list_id="list-abc", client=_mock_client())
+    list_client = lists_mod.SPList(list_id="list-abc", client=_mock_client())
     list_client._field_types["Customer Name"] = "number"
     list_client._field_validation["Customer Name"] = {"minimum": 0, "maximum": 100}
 
@@ -749,7 +749,7 @@ def test_validate_item_number_above_maximum(env: None) -> None:
 
 def test_validate_item_number_within_range(env: None) -> None:
     """Number columns should accept values within the configured range."""
-    list_client = lists_mod.GraphList(list_id="list-abc", client=_mock_client())
+    list_client = lists_mod.SPList(list_id="list-abc", client=_mock_client())
     list_client._field_types["Customer Name"] = "number"
     list_client._field_validation["Customer Name"] = {"minimum": 0, "maximum": 100}
 
@@ -758,7 +758,7 @@ def test_validate_item_number_within_range(env: None) -> None:
 
 def test_validate_item_choice_allow_text_entry(env: None) -> None:
     """Choice columns with allow_text_entry should accept unlisted values."""
-    list_client = lists_mod.GraphList(list_id="list-abc", client=_mock_client())
+    list_client = lists_mod.SPList(list_id="list-abc", client=_mock_client())
     list_client._field_validation["Status"] = {"allow_text_entry": True}
 
     # "Custom" is not in ["Active", "Closed"] but should be accepted
@@ -767,7 +767,7 @@ def test_validate_item_choice_allow_text_entry(env: None) -> None:
 
 def test_validate_item_choice_disallow_text_entry(env: None) -> None:
     """Choice columns without allow_text_entry should reject unlisted values."""
-    list_client = lists_mod.GraphList(list_id="list-abc", client=_mock_client())
+    list_client = lists_mod.SPList(list_id="list-abc", client=_mock_client())
     list_client._field_validation["Status"] = {"allow_text_entry": False}
 
     with pytest.raises(ValueError, match="not one of the allowed choices"):
@@ -786,7 +786,7 @@ def test_save_item_create_calls_post(env: None) -> None:
         },
     }
 
-    list_client = lists_mod.GraphList(list_id="list-abc", client=mock_client)
+    list_client = lists_mod.SPList(list_id="list-abc", client=mock_client)
     result = list_client.save_item(
         {
             "Title": "New Item",
@@ -814,7 +814,7 @@ def test_save_item_update_calls_patch(env: None) -> None:
     mock_client = _mock_client()
     mock_client.patch.return_value = {"Title": "Updated", "field_status": "Closed"}
 
-    list_client = lists_mod.GraphList(list_id="list-abc", client=mock_client)
+    list_client = lists_mod.SPList(list_id="list-abc", client=mock_client)
     result = list_client.save_item(
         {"_id": "42", "Title": "Updated", "Status": "Closed"}
     )
@@ -828,7 +828,7 @@ def test_save_item_update_calls_patch(env: None) -> None:
 def test_save_items_stops_on_first_error(env: None) -> None:
     """save_items should stop immediately when a validation error occurs."""
     mock_client = _mock_client()
-    list_client = lists_mod.GraphList(list_id="list-abc", client=mock_client)
+    list_client = lists_mod.SPList(list_id="list-abc", client=mock_client)
 
     with pytest.raises(ValueError, match="allowed choices"):
         list_client.save_items(
@@ -856,7 +856,7 @@ def test_save_dataframe_creates_and_updates_rows(env: None) -> None:
         },
     }
 
-    list_client = lists_mod.GraphList(list_id="list-abc", client=mock_client)
+    list_client = lists_mod.SPList(list_id="list-abc", client=mock_client)
     df = pd.DataFrame(
         [
             {
@@ -886,7 +886,7 @@ def test_save_dataframe_creates_and_updates_rows(env: None) -> None:
 
 def test_save_dataframe_requires_dataframe_instance(env: None) -> None:
     """save_dataframe should reject non-DataFrame inputs."""
-    list_client = lists_mod.GraphList(list_id="list-abc", client=_mock_client())
+    list_client = lists_mod.SPList(list_id="list-abc", client=_mock_client())
 
     with pytest.raises(TypeError, match="pandas.DataFrame"):
         list_client.save_dataframe(cast(Any, [{"Title": "Item"}]))
@@ -900,9 +900,10 @@ def test_get_view_columns_returns_value(env: None) -> None:
     ]
     mock_client = _mock_client(return_value={"value": columns})
 
-    list_client = lists_mod.GraphList(list_id="list-abc", client=mock_client)
+    list_client = lists_mod.SPList(list_id="list-abc", client=mock_client)
     result = list_client.get_view_columns("view-1")
 
     assert result == columns
     call_path = mock_client.get.call_args[0][0]
     assert "views/view-1/columns" in call_path
+

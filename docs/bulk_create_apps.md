@@ -268,7 +268,7 @@ notepad apps.json
 
 ```powershell
 # Navegar ao diretório do projeto
-cd C:\GitHub\MSGraphClient
+cd C:\GitHub\ezspi
 
 # Executar script
 .\src\bulkCreate\Bulk-CreateApps.ps1 -InputPath "apps.json"
@@ -407,7 +407,7 @@ az login
 
 ```bash
 # Navegar ao diretório do projeto
-cd C:\GitHub\MSGraphClient
+cd C:\GitHub\ezspi
 
 # Instalar ambiente e dependências
 uv sync
@@ -607,3 +607,4 @@ echo "*-output.json" >> .gitignore
 - [Azure CLI Documentation](https://docs.microsoft.com/en-us/cli/azure/)
 - [Sites.Selected Permission](https://docs.microsoft.com/en-us/graph/sites-selected-permission)
 - [PowerShell Execution Policies](https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_execution_policies)
+

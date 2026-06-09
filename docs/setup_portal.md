@@ -23,7 +23,7 @@ Este guia usa exclusivamente interfaces web: **portal do Azure** e **Microsoft G
 > 🔧 **Equipe de desenvolvimento**
 
 1. Abra o [portal do Azure](https://portal.azure.com) → **Microsoft Entra ID** → **Registros de app** → **Novo registro**.
-2. **Nome**: escolha um nome descritivo, ex: `MSGraphClient-SharePoint`.
+2. **Nome**: escolha um nome descritivo, ex: `ezspi-SharePoint`.
 3. **Tipos de conta suportados**: selecione **Contas neste diretório organizacional apenas**.
 4. Deixe **URI de Redirecionamento** em branco (fluxo de credenciais do cliente — sem login do usuário).
 5. Clique em **Registrar** e anote:
@@ -96,7 +96,7 @@ Formato esperado: `contoso.sharepoint.com,xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx,y
   "grantedToIdentities": [{
     "application": {
       "id": "<AZURE_CLIENT_ID>",
-      "displayName": "MSGraphClient-SharePoint"
+      "displayName": "ezspi-SharePoint"
     }
   }]
 }
@@ -110,7 +110,7 @@ Formato esperado: `contoso.sharepoint.com,xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx,y
   "grantedToIdentities": [{
     "application": {
       "id": "<AZURE_CLIENT_ID>",
-      "displayName": "MSGraphClient-SharePoint"
+      "displayName": "ezspi-SharePoint"
     }
   }]
 }
@@ -226,3 +226,4 @@ uv run examples/example_drive_list.py
 uv run examples/example_drive_folder_operations.py
 uv run examples/example_list_get.py
 ```
+

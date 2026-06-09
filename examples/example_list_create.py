@@ -13,8 +13,8 @@ import os
 import random
 from typing import Any
 
-from msgraphclient.auth import GraphClient
-from msgraphclient.lists import GraphList
+from ezspi.auth import Client
+from ezspi.lists import SPList
 
 from examples.list_value_generation import random_number_from_validation
 
@@ -155,18 +155,18 @@ def _generate_item_fields_for_schema(
 
 
 def run_example_list_create(
-    client: GraphClient | None = None,
-    list_client: GraphList | None = None,
+    client: Client | None = None,
+    list_client: SPList | None = None,
     list_id: str | None = None,
     item_fields: dict[str, Any] | None = None,
     show_output: bool = True,
 ) -> dict[str, Any]:
     """Create a list item and return chainable context with the result."""
-    resolved_client = client or GraphClient()
+    resolved_client = client or Client()
     resolved_list_client = list_client
     if resolved_list_client is None:
         resolved_list_id = list_id or os.environ["SHAREPOINT_LIST_ID"]
-        resolved_list_client = GraphList(
+        resolved_list_client = SPList(
             list_id=resolved_list_id, client=resolved_client
         )
 
@@ -211,3 +211,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

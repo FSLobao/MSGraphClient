@@ -119,7 +119,7 @@ No fluxo delegado, o acesso efetivo em runtime é a interseção entre: 1) a con
 
 Mudar para autenticação delegada requer:
 
-1. Mudança da aquisição de token em `src/msgraphclient/auth.py` do endpoint de
+1. Mudança da aquisição de token em `src/ezspi/auth.py` do endpoint de
    credenciais do cliente para o fluxo de código de autorização (usando uma biblioteca como
    [MSAL for Python](https://github.com/AzureAD/microsoft-authentication-library-for-python)
    com `acquire_token_interactive()`).
@@ -130,3 +130,4 @@ Mudar para autenticação delegada requer:
 Para a maioria dos cenários, **credenciais do cliente é mais simples**. Use
 autenticação delegada apenas se seus requisitos de governança ou conformidade mandatarem uma
 trilha de auditoria vinculando cada ação do SharePoint a um usuário nomeado.
+

@@ -1,4 +1,4 @@
-# Copilot Context — MSGraphClient
+# Copilot Context — ezspi
 
 Este arquivo resume o estado atual do repositório para manutenção de código e documentação.
 Atualize-o sempre que a superfície pública, dependências ou estrutura do projeto mudarem.
@@ -14,10 +14,10 @@ Atualize-o sempre que a superfície pública, dependências ou estrutura do proj
 - `delegated` (`interactive` ou `device_code`)
 
 **Componentes públicos principais**:
-- `GraphAuthenticator`: aquisição de token e validação de credenciais/configuração.
-- `GraphClient`: sessão HTTP para Graph, helpers de request e normalização de erros HTTP.
-- `GraphDrive`: operações de biblioteca de documentos (navegação, upload/download, leitura/escrita).
-- `GraphList`: operações de listas (schema, views, leitura paginada, validação e save).
+- `Authenticator`: aquisição de token e validação de credenciais/configuração.
+- `Client`: sessão HTTP para Graph, helpers de request e normalização de erros HTTP.
+- `SPLibrary`: operações de biblioteca de documentos (navegação, upload/download, leitura/escrita).
+- `SPList`: operações de listas (schema, views, leitura paginada, validação e save).
 
 No fluxo `delegated`, o acesso efetivo em runtime continua sendo a interseção entre:
 - concessão do aplicativo no site (`Sites.Selected`)
@@ -41,7 +41,7 @@ No fluxo `delegated`, o acesso efetivo em runtime continua sendo a interseção 
 ## Estrutura Atual
 
 ```text
-MSGraphClient/
+ezspi/
 ├── docs/
 │   ├── bulk_create_apps.md
 │   ├── getting_started.md
@@ -65,7 +65,7 @@ MSGraphClient/
 │   └── downloads/
 ├── src/
 │   ├── bulkCreate/
-│   └── msgraphclient/
+│   └── ezspi/
 │       ├── __init__.py
 │       ├── auth.py
 │       ├── client.py
@@ -90,47 +90,47 @@ MSGraphClient/
 
 ## Superfície de API (Atual)
 
-### `src/msgraphclient/client.py`
-- `GraphAuthorizationError` (especializa falhas 401/403).
-- `GraphClient.format_http_error(error)`
-- `GraphClient.get(path, **kwargs)`
-- `GraphClient.post(path, json, **kwargs)`
-- `GraphClient.patch(path, json, **kwargs)`
-- `GraphClient.put_bytes(path, data, content_type=..., **kwargs)`
-- `GraphClient.get_raw(path, **kwargs)`
-- `GraphClient.get_raw_with_encoding(path, **kwargs)`
+### `src/ezspi/client.py`
+- `AuthorizationError` (especializa falhas 401/403).
+- `Client.format_http_error(error)`
+- `Client.get(path, **kwargs)`
+- `Client.post(path, json, **kwargs)`
+- `Client.patch(path, json, **kwargs)`
+- `Client.put_bytes(path, data, content_type=..., **kwargs)`
+- `Client.get_raw(path, **kwargs)`
+- `Client.get_raw_with_encoding(path, **kwargs)`
 
 Também popula atributos de site (`site_graph_id`, `site_name`, `site_display_name`, `site_web_url`, `site_drives`, `site_lists`) quando `SHAREPOINT_SITE_ID` está disponível.
 
-### `src/msgraphclient/auth.py`
-- `GraphAuthenticator` com resolução por `GraphSettings` e suporte a `client_credentials` e `delegated`.
-- Reexporta `GraphClient` e `GraphAuthorizationError`.
+### `src/ezspi/auth.py`
+- `Authenticator` com resolução por `Settings` e suporte a `client_credentials` e `delegated`.
+- Reexporta `Client` e `AuthorizationError`.
 - Usa cache de token em memória para fluxo delegado.
 
-### `src/msgraphclient/drive.py`
-- `GraphDrive.pwd()`
-- `GraphDrive.cd(path)`
-- `GraphDrive.ls(path=None)`
-- `GraphDrive.download(item_id, local_path)`
-- `GraphDrive.upload(local_path, remote_folder="root", remote_name=None)`
-- `GraphDrive.read(item_id, encoding=None)`
-- `GraphDrive.write(item_id, content, encoding=None)`
+### `src/ezspi/drive.py`
+- `SPLibrary.pwd()`
+- `SPLibrary.cd(path)`
+- `SPLibrary.ls(path=None)`
+- `SPLibrary.download(item_id, local_path)`
+- `SPLibrary.upload(local_path, remote_folder="root", remote_name=None)`
+- `SPLibrary.read(item_id, encoding=None)`
+- `SPLibrary.write(item_id, content, encoding=None)`
 
 `read()` detecta charset da resposta HTTP quando possível e persiste em `last_encoding`, usado por `write()` quando `encoding` não é informado.
 
-### `src/msgraphclient/lists.py`
-- `GraphList.get_views()` (com fallback seguro)
-- `GraphList.get_view_columns(view_id)`
-- `GraphList.get_columns(names=None)`
-- `GraphList.get_schema()`
-- `GraphList.get_field_types()`
-- `GraphList.validate_item(data)`
-- `GraphList.get_items(select=None, include_id=True)`
-- `GraphList.get_item_template(include_optional=True)`
-- `GraphList.get_items_dataframe(select=None, include_id=True)`
-- `GraphList.save_dataframe(dataframe)`
-- `GraphList.save_item(data)`
-- `GraphList.save_items(items)`
+### `src/ezspi/lists.py`
+- `SPList.get_views()` (com fallback seguro)
+- `SPList.get_view_columns(view_id)`
+- `SPList.get_columns(names=None)`
+- `SPList.get_schema()`
+- `SPList.get_field_types()`
+- `SPList.validate_item(data)`
+- `SPList.get_items(select=None, include_id=True)`
+- `SPList.get_item_template(include_optional=True)`
+- `SPList.get_items_dataframe(select=None, include_id=True)`
+- `SPList.save_dataframe(dataframe)`
+- `SPList.save_item(data)`
+- `SPList.save_items(items)`
 
 ---
 
@@ -173,4 +173,5 @@ Diretrizes:
 ## Última Atualização
 
 - Data: 09/06/2026
-- Alteração principal: contexto sincronizado com estrutura atual (`src/msgraphclient`, exemplos e testes), superfície pública revisada e seção de validação ajustada para refletir o estado real da sessão.
+- Alteração principal: contexto sincronizado com estrutura atual (`src/ezspi`, exemplos e testes), superfície pública revisada e seção de validação ajustada para refletir o estado real da sessão.
+

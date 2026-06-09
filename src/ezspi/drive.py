@@ -1,27 +1,27 @@
-"""
-drive.py — SharePoint document library (drive) operations via Microsoft Graph.
+﻿"""
+drive.py - SharePoint document library (drive) operations via Microsoft Graph.
 
-The primary API is the ``GraphDrive`` class, which validates configuration and
+The primary API is the ``SPLibrary`` class, which validates configuration and
 tests drive access on initialization.
 
 Covered operations:
-    ls                  — list the children of the current working folder
-    pwd                 — return current working folder path
-    cd                  — change current working folder with Graph validation
-    download            — download a drive item to a local path
-    upload              — upload a local file to the drive
-    read                — decode and return text content; auto-detects charset from HTTP response
-    write               — overwrite a drive item; uses encoding detected by last read
+    ls                  - list the children of the current working folder
+    pwd                 - return current working folder path
+    cd                  - change current working folder with Graph validation
+    download            - download a drive item to a local path
+    upload              - upload a local file to the drive
+    read                - decode and return text content; auto-detects charset from HTTP response
+    write               - overwrite a drive item; uses encoding detected by last read
 """
 
 from __future__ import annotations
 
 from pathlib import Path
 
-from msgraphclient.auth import GraphClient
+from ezspi.auth import Client
 
 
-class GraphDrive:
+class SPLibrary:
     """Drive operations backed by Microsoft Graph.
 
     On initialization, validates ``SHAREPOINT_DRIVE_ID``, creates a Graph client,
@@ -31,18 +31,18 @@ class GraphDrive:
     def __init__(
         self,
         drive_id: str,
-        client: GraphClient | None = None,
+        client: Client | None = None,
         working_folder: str = "/",
     ) -> None:
         """Initialize drive operations.
 
         Args:
             drive_id: SharePoint drive ID (required).
-            client: Optional pre-configured GraphClient instance.
+            client: Optional pre-configured Client instance.
             working_folder: Initial working folder path (default: root "/").
         """
         self.drive_id: str = drive_id
-        self.client = client or GraphClient()
+        self.client = client or Client()
 
         # Public drive attributes populated from Graph metadata.
         self.drive_info: dict = self._get_drive_summary()
@@ -270,3 +270,4 @@ class GraphDrive:
             data,
             content_type=f"text/plain; charset={resolved}",
         )
+

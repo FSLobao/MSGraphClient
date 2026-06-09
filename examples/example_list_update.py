@@ -16,8 +16,8 @@ from typing import Any
 
 import requests
 
-from msgraphclient.auth import GraphClient
-from msgraphclient.lists import GraphList
+from ezspi.auth import Client
+from ezspi.lists import SPList
 
 from examples.list_value_generation import bounded_number_update
 
@@ -59,7 +59,7 @@ def _is_missing_value(value: Any) -> bool:
 
 
 def _build_typed_update(
-    list_client: GraphList,
+    list_client: SPList,
     current_item: dict[str, Any],
     number_increment: float,
 ) -> tuple[dict[str, Any], dict[str, str]]:
@@ -136,7 +136,7 @@ def _build_typed_update(
 
 
 def _save_with_fallback(
-    list_client: GraphList,
+    list_client: SPList,
     item_id: str,
     typed_update: dict[str, Any],
     current_item: dict[str, Any],
@@ -153,7 +153,7 @@ def _save_with_fallback(
         result = list_client.save_item(payload)
         return result, {}, None
     except requests.HTTPError as exc:
-        batch_error_message = GraphClient.format_http_error(exc)
+        batch_error_message = Client.format_http_error(exc)
         if show_output:
             print(
                 "\nBatch update failed; retrying one field at a time to isolate issues..."
@@ -168,7 +168,7 @@ def _save_with_fallback(
                 last_success = list_client.save_item(single_field_payload)
             except requests.HTTPError as field_exc:
                 existing_value = current_item.get(field_name)
-                field_error = GraphClient.format_http_error(field_exc)
+                field_error = Client.format_http_error(field_exc)
                 failed_fields[field_name] = (
                     f"{field_error} | existing={_format_value_for_log(existing_value)} "
                     f"| attempted={_format_value_for_log(field_value)}"
@@ -178,19 +178,19 @@ def _save_with_fallback(
 
 
 def run_example_list_update(
-    client: GraphClient | None = None,
-    list_client: GraphList | None = None,
+    client: Client | None = None,
+    list_client: SPList | None = None,
     list_id: str | None = None,
     item_id: str | None = None,
     number_increment: float = NUMBER_INCREMENT,
     show_output: bool = True,
 ) -> dict[str, Any]:
     """Execute a typed point update on one list item and return context."""
-    resolved_client = client or GraphClient()
+    resolved_client = client or Client()
     resolved_list_client = list_client
     if resolved_list_client is None:
         resolved_list_id = list_id or os.environ["SHAREPOINT_LIST_ID"]
-        resolved_list_client = GraphList(
+        resolved_list_client = SPList(
             list_id=resolved_list_id, client=resolved_client
         )
 
@@ -320,3 +320,4 @@ def run_example_list_update(
 
 if __name__ == "__main__":
     run_example_list_update(show_output=True)
+

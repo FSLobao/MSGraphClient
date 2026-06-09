@@ -62,7 +62,7 @@ az login
 
 # Criar registro de aplicativo
 APP_OBJECT_ID=$(az ad app create \
-  --display-name "MSGraphClient-SharePoint" \
+  --display-name "ezspi-SharePoint" \
   --sign-in-audience "AzureADMyOrg" \
   --query id -o tsv)
 
@@ -75,7 +75,7 @@ echo "AZURE_TENANT_ID=$AZURE_TENANT_ID"
 # Criar segredo do cliente (válido por 2 anos)
 AZURE_CLIENT_SECRET=$(az ad app credential reset \
   --id $APP_OBJECT_ID \
-  --display-name "MSGraphClient-secret" \
+  --display-name "ezspi-secret" \
   --years 2 \
   --query password -o tsv)
 
@@ -88,7 +88,7 @@ echo "AZURE_CLIENT_SECRET=$AZURE_CLIENT_SECRET"
 Connect-MgGraph -Scopes "Application.ReadWrite.All"
 
 # Criar registro de aplicativo
-$app = New-MgApplication -DisplayName "MSGraphClient-SharePoint" `
+$app = New-MgApplication -DisplayName "ezspi-SharePoint" `
   -SignInAudience "AzureADMyOrg"
 
 $AZURE_CLIENT_ID = $app.AppId
@@ -100,7 +100,7 @@ Write-Host "AZURE_TENANT_ID=$AZURE_TENANT_ID"
 # Criar segredo do cliente (válido por 2 anos)
 $secret = Add-MgApplicationPassword -ApplicationId $app.Id `
   -PasswordCredential @{
-    DisplayName = "MSGraphClient-secret"
+    DisplayName = "ezspi-secret"
     EndDateTime = (Get-Date).AddYears(2)
   }
 
@@ -272,7 +272,7 @@ curl -s -X POST \
     "grantedToIdentities": [{
       "application": {
         "id": "'"${APP_ID}"'",
-        "displayName": "MSGraphClient-SharePoint"
+        "displayName": "ezspi-SharePoint"
       }
     }]
   }'
@@ -290,7 +290,7 @@ curl -s -X POST \
     "grantedToIdentities": [{
       "application": {
         "id": "'"${APP_ID}"'",
-        "displayName": "MSGraphClient-SharePoint"
+        "displayName": "ezspi-SharePoint"
       }
     }]
   }'
@@ -377,3 +377,4 @@ uv run examples/example_drive_list.py
 uv run examples/example_drive_folder_operations.py
 uv run examples/example_list_get.py
 ```
+

@@ -13,8 +13,8 @@ from typing import Any
 import os
 
 
-from msgraphclient.auth import GraphClient
-from msgraphclient.drive import GraphDrive
+from ezspi.auth import Client
+from ezspi.drive import SPLibrary
 
 # ── Configuration ───────────────────────────────────────────────────────────
 # Replace with a real drive item ID, or leave empty to use the first file found
@@ -24,19 +24,19 @@ LOCAL_FOLDER: Path = Path(__file__).parent / "downloads"
 
 
 def run_example_drive_download(
-    client: GraphClient | None = None,
-    drive: GraphDrive | None = None,
+    client: Client | None = None,
+    drive: SPLibrary | None = None,
     drive_id: str | None = None,
     item_id: str | None = None,
     local_folder: str | Path | None = None,
     show_output: bool = True,
 ) -> dict[str, Any]:
     """Download a drive file and return context plus local path."""
-    resolved_client = client or GraphClient()
+    resolved_client = client or Client()
     resolved_drive = drive
     if resolved_drive is None:
         resolved_drive_id = drive_id or os.environ["SHAREPOINT_DRIVE_ID"]
-        resolved_drive = GraphDrive(drive_id=resolved_drive_id, client=resolved_client)
+        resolved_drive = SPLibrary(drive_id=resolved_drive_id, client=resolved_client)
 
     target_item_id = (item_id or ITEM_ID).strip()
     target_folder = Path(local_folder) if local_folder else LOCAL_FOLDER
@@ -86,3 +86,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

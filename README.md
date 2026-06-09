@@ -1,9 +1,9 @@
 <a id="topo"></a>
 
-# MSGraphClient
+# ezspi
 ## Uma camada de abstração MSAL para uso do SharePoint
 
-MSGraphClient é uma biblioteca Python para abstrair fluxos de autenticação com **MSAL** e simplificar
+ezspi é uma biblioteca Python para abstrair fluxos de autenticação com **MSAL** e simplificar
 a integração de aplicações desktop e mobile com o SharePoint Online via **Microsoft Graph API**. O foco é fornecer uma experiência de desenvolvimento fluida, com configuração centralizada, mensagens localizadas e operações de alto nível.
 
 As operações cobertas incluem gerenciamento de biblioteca de documentos (drive)
@@ -49,7 +49,7 @@ Este repositório apresenta a seguinte organização:
 				<li><code>Bulk-CreateApps.ps1</code>: alternativa PowerShell para execucao operacional em ambientes Windows</li>
 			</ul>
 		</li>
-		<li><strong>msgraphclient/</strong>: implementacao do cliente Graph e operacoes de SharePoint
+		<li><strong>ezspi/</strong>: implementacao do cliente Graph e operacoes de SharePoint
 			<ul>
 				<li><code>__init__.py</code>: ponto de entrada do pacote para importacoes publicas</li>
 				<li><code>auth.py</code>: autenticacao MSAL (app_only/delegated) — valida credenciais e adquire tokens</li>
@@ -68,7 +68,7 @@ Este repositório apresenta a seguinte organização:
 	<summary><strong>tests/</strong>: testes automatizados de unidade e comportamento</summary>
 	<ul>
 		<li><code>test_auth.py</code>: validacao dos fluxos de autenticacao e aquisicao de token</li>
-		<li><code>test_graph_client.py</code>: cobertura do GraphClient (sessao HTTP, helpers get/post/patch)</li>
+		<li><code>test_graph_client.py</code>: cobertura do Client (sessao HTTP, helpers get/post/patch)</li>
 		<li><code>test_site.py</code>: cobertura da descoberta e metadados do site</li>
 		<li><code>test_drive.py</code>: cobertura das operacoes de arquivos e bibliotecas</li>
 		<li><code>test_lists.py</code>: cobertura das operacoes em listas, validacao tipada e metadados</li>
@@ -144,7 +144,7 @@ Opção A (com UV):
 
 ```bash
 git clone <repo-url>
-cd MSGraphClient
+cd ezspi
 uv sync
 ```
 
@@ -152,7 +152,7 @@ Opção B (sem UV, com venv + pip):
 
 ```bash
 git clone <repo-url>
-cd MSGraphClient
+cd ezspi
 python -m venv .venv
 ```
 
@@ -198,12 +198,12 @@ Variáveis opcionais (possuem valor default):
 | `GRAPH_DELEGATED_SCOPES` | `Sites.Selected` | Escopos delegados (separados por espaço ou vírgula) |
 | `GRAPH_LOCALE` | `en` | Locale usado para mensagens apresentadas ao usuário (`en` ou `pt`) |
 | `GRAPH_AUTH_POPUP_SIZE` | `520x680` | Tamanho da janela de login (formato `WxH`) |
-| `SHAREPOINT_DRIVE_ID` | — | ID da biblioteca de documentos (necessário para `GraphDrive`) |
-| `SHAREPOINT_LIST_ID` | — | ID da lista SharePoint (necessário para `GraphList`) |
+| `SHAREPOINT_DRIVE_ID` | — | ID da biblioteca de documentos (necessário para `SPLibrary`) |
+| `SHAREPOINT_LIST_ID` | — | ID da lista SharePoint (necessário para `SPList`) |
 
-Defaults e resolucao dessas variaveis ficam centralizados em `src/msgraphclient/settings.py`.
-Mensagens para usuario sao resolvidas em `src/msgraphclient/messages.py`, com bundles em
-`src/msgraphclient/locales/en.json` e `src/msgraphclient/locales/pt.json`.
+Defaults e resolucao dessas variaveis ficam centralizados em `src/ezspi/settings.py`.
+Mensagens para usuario sao resolvidas em `src/ezspi/messages.py`, com bundles em
+`src/ezspi/locales/en.json` e `src/ezspi/locales/pt.json`.
 
 Consulte [`.env.example`](.env.example) para um modelo completo com explicações detalhadas.
 
@@ -339,14 +339,14 @@ O utilitário em lote aplica o mesmo modelo de segurança do restante do projeto
 ## Visão geral dos módulos
 
 ### `client.py`
-`GraphClient` é o ponto de entrada principal. Lê variáveis de ambiente do `.env`,
-cria um `GraphAuthenticator` interno, gerencia a sessão HTTP autenticada e expõe
+`Client` é o ponto de entrada principal. Lê variáveis de ambiente do `.env`,
+cria um `Authenticator` interno, gerencia a sessão HTTP autenticada e expõe
 helpers de requisição (`get`, `post`, `patch`, `put_bytes`, `get_raw`) além de
 métodos de descoberta do site.
 
 | Método / Atributo | Descrição |
 |---|---|
-| `GraphClient()` | Lê `.env`, autentica e carrega metadados do site |
+| `Client()` | Lê `.env`, autentica e carrega metadados do site |
 | `client.site_graph_id` | ID Graph do site conectado |
 | `client.site_name` | Nome interno do site |
 | `client.site_display_name` | Nome de exibição do site |
@@ -357,34 +357,34 @@ métodos de descoberta do site.
 | `client.refresh_site_info()` | Recarrega metadados do site a partir do Graph |
 
 ### `auth.py`
-`GraphAuthenticator` é responsável exclusivamente pela autenticação MSAL.
+`Authenticator` é responsável exclusivamente pela autenticação MSAL.
 Recebe credenciais explícitas (não lê `.env`) e adquire tokens OAuth 2.0
 via fluxo de credenciais do cliente ou fluxo delegado interativo.
 
 Para o fluxo delegado, veja [docs/setup_delegated_auth.md](docs/setup_delegated_auth.md).
 
 ### `settings.py`
-`GraphSettings` e `GraphDefaults` centralizam defaults e normalizacao de
+`Settings` e `Defaults` centralizam defaults e normalizacao de
 configuracao, evitando valores hardcoded espalhados entre modulos.
 
 ### `messages.py` e `locales/*.json`
 `messages.py` resolve strings voltadas ao usuario via `GRAPH_LOCALE`.
-Os bundles ficam em `src/msgraphclient/locales/en.json` e
-`src/msgraphclient/locales/pt.json`, com fallback para ingles quando
+Os bundles ficam em `src/ezspi/locales/en.json` e
+`src/ezspi/locales/pt.json`, com fallback para ingles quando
 locale/chave nao existe.
 
 ### `drive.py`
 Operações de biblioteca de documentos. Requer `drive_id` explícito na construção.
 
 ```python
-drive = GraphDrive(
+drive = SPLibrary(
 	drive_id=os.environ["SHAREPOINT_DRIVE_ID"],
 	client=client,
 	working_folder="/",  # opcional
 )
 ```
 
-Na inicialização, `GraphDrive` consulta metadados básicos do drive e expõe:
+Na inicialização, `SPLibrary` consulta metadados básicos do drive e expõe:
 `drive_info`, `drive_graph_id`, `drive_name`, `drive_web_url` e `drive_type`.
 
 Regras de caminho para `cd()` e `ls(path=...)`:
@@ -394,35 +394,35 @@ Regras de caminho para `cd()` e `ls(path=...)`:
 
 | Método | Descrição |
 |---|---|
-| `GraphDrive.ls(path=None)` | Lista os filhos da pasta atual ou do caminho informado |
-| `GraphDrive.pwd()` | Retorna a pasta de trabalho atual |
-| `GraphDrive.cd(path)` | Altera a pasta de trabalho, validando no SharePoint |
-| `GraphDrive.download(item_id, local_path)` | Baixa um arquivo para disco |
-| `GraphDrive.upload(local_path, remote_folder="root", remote_name=None)` | Envia um arquivo local (upload simples, ≤ 4 MB). `remote_folder` aceita `root`, `/Pasta`, `Pasta`, `root:/Pasta` e `root:/Pasta:` |
-| `GraphDrive.read(item_id, encoding=None)` | Retorna o conteúdo textual; detecta charset do `Content-Type` HTTP quando `encoding` não é informado |
-| `GraphDrive.write(item_id, content, encoding=None)` | Sobrescreve o conteúdo; usa `encoding` explícito ou `last_encoding` da última leitura e envia `Content-Type` com charset |
+| `SPLibrary.ls(path=None)` | Lista os filhos da pasta atual ou do caminho informado |
+| `SPLibrary.pwd()` | Retorna a pasta de trabalho atual |
+| `SPLibrary.cd(path)` | Altera a pasta de trabalho, validando no SharePoint |
+| `SPLibrary.download(item_id, local_path)` | Baixa um arquivo para disco |
+| `SPLibrary.upload(local_path, remote_folder="root", remote_name=None)` | Envia um arquivo local (upload simples, ≤ 4 MB). `remote_folder` aceita `root`, `/Pasta`, `Pasta`, `root:/Pasta` e `root:/Pasta:` |
+| `SPLibrary.read(item_id, encoding=None)` | Retorna o conteúdo textual; detecta charset do `Content-Type` HTTP quando `encoding` não é informado |
+| `SPLibrary.write(item_id, content, encoding=None)` | Sobrescreve o conteúdo; usa `encoding` explícito ou `last_encoding` da última leitura e envia `Content-Type` com charset |
 
 ### `lists.py`
 Operações de listas do SharePoint. Requer `list_id` explícito na construção.
 
 ```python
-list_client = GraphList(list_id=os.environ["SHAREPOINT_LIST_ID"], client=client)
+list_client = SPList(list_id=os.environ["SHAREPOINT_LIST_ID"], client=client)
 ```
 
 | Método | Descrição |
 |---|---|
-| `GraphList.get_columns(names=None)` | Recupera colunas da lista, opcionalmente filtradas por nome |
-| `GraphList.get_views()` | Lista as views da lista |
-| `GraphList.get_view_columns(view_id)` | Lista as colunas visíveis em uma view |
-| `GraphList.get_schema()` | Retorna schema de colunas editáveis (display_name, tipo e regras) |
-| `GraphList.get_field_types()` | Retorna mapeamento `displayName -> type` |
-| `GraphList.get_items(select=None, include_id=True)` | Recupera itens com chaves `displayName` e paginação automática |
-| `GraphList.get_items_dataframe(select=None, include_id=True)` | Recupera itens diretamente em DataFrame pandas |
-| `GraphList.get_item_template(include_optional=True)` | Gera template de item com colunas editáveis |
-| `GraphList.validate_item(data)` | Valida tipos e regras antes de persistir |
-| `GraphList.save_item(data)` | Cria ou atualiza item conforme presença de `_id` |
-| `GraphList.save_items(items)` | Persiste múltiplos itens, interrompendo no primeiro erro |
-| `GraphList.save_dataframe(dataframe)` | Persiste linhas de DataFrame no formato da API nova |
+| `SPList.get_columns(names=None)` | Recupera colunas da lista, opcionalmente filtradas por nome |
+| `SPList.get_views()` | Lista as views da lista |
+| `SPList.get_view_columns(view_id)` | Lista as colunas visíveis em uma view |
+| `SPList.get_schema()` | Retorna schema de colunas editáveis (display_name, tipo e regras) |
+| `SPList.get_field_types()` | Retorna mapeamento `displayName -> type` |
+| `SPList.get_items(select=None, include_id=True)` | Recupera itens com chaves `displayName` e paginação automática |
+| `SPList.get_items_dataframe(select=None, include_id=True)` | Recupera itens diretamente em DataFrame pandas |
+| `SPList.get_item_template(include_optional=True)` | Gera template de item com colunas editáveis |
+| `SPList.validate_item(data)` | Valida tipos e regras antes de persistir |
+| `SPList.save_item(data)` | Cria ou atualiza item conforme presença de `_id` |
+| `SPList.save_items(items)` | Persiste múltiplos itens, interrompendo no primeiro erro |
+| `SPList.save_dataframe(dataframe)` | Persiste linhas de DataFrame no formato da API nova |
 
 A validação em `validate_item` utiliza metadados extraídos da definição de coluna no Graph:
 
@@ -461,3 +461,4 @@ Este projeto é licenciado sob a **GNU General Public License v3.0**.
 Consulte [LICENSE](LICENSE) para o texto completo.
 
 [⬆ Voltar ao topo](#topo)
+

@@ -1,11 +1,11 @@
-"""Tests for GraphClient site-discovery methods."""
+﻿"""Tests for Client site-discovery methods."""
 
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-import msgraphclient.auth as auth_mod
-from msgraphclient.client import GraphClient
+import ezspi.auth as auth_mod
+from ezspi.client import Client
 
 
 def test_get_site_contents_combines_site_drives_lists(
@@ -18,8 +18,8 @@ def test_get_site_contents_combines_site_drives_lists(
     mock_authenticator.token = "fake-token"
     mock_authenticator.sharepoint_site_id = "site-1"
 
-    with patch.object(GraphClient, "_load_site_info") as mock_load:
-        client = auth_mod.GraphClient(
+    with patch.object(Client, "_load_site_info") as mock_load:
+        client = auth_mod.Client(
             authenticator=mock_authenticator, sharepoint_site_id="site-1"
         )
 
@@ -51,8 +51,9 @@ def test_site_info_not_loaded_without_site_id(
     mock_authenticator.token = "fake-token"
     mock_authenticator.sharepoint_site_id = ""
 
-    client = auth_mod.GraphClient(authenticator=mock_authenticator)
+    client = auth_mod.Client(authenticator=mock_authenticator)
 
     assert client.site_data == {}
     assert client.site_drives == []
     assert client.site_lists == []
+

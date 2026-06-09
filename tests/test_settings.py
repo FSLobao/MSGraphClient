@@ -1,6 +1,6 @@
-"""Tests for msgraphclient.settings."""
+﻿"""Tests for ezspi.settings."""
 
-from msgraphclient.settings import GRAPH_DEFAULTS, GraphSettings, parse_popup_size
+from ezspi.settings import DEFAULTS, Settings, parse_popup_size
 
 
 def test_parse_popup_size_uses_default_on_invalid_input() -> None:
@@ -8,13 +8,13 @@ def test_parse_popup_size_uses_default_on_invalid_input() -> None:
 
     assert parse_popup_size("not-a-size") == (520, 680)
     assert parse_popup_size(None) == (520, 680)
-    assert GRAPH_DEFAULTS.auth_popup_size == "520x680"
+    assert DEFAULTS.auth_popup_size == "520x680"
 
 
 def test_graph_settings_preserves_explicit_delegated_scopes() -> None:
     """Explicit delegated scopes should take precedence over environment defaults."""
 
-    settings = GraphSettings.from_sources(
+    settings = Settings.from_sources(
         tenant_id="tenant-id",
         client_id="client-id",
         sharepoint_site_id="site-id",
@@ -22,3 +22,4 @@ def test_graph_settings_preserves_explicit_delegated_scopes() -> None:
     )
 
     assert settings.delegated_scopes == ("scope.a", "scope.b")
+

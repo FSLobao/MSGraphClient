@@ -1,13 +1,13 @@
-"""Tests for Graph HTTP helper behavior in auth.py."""
+﻿"""Tests for Graph HTTP helper behavior in auth.py."""
 
 from unittest.mock import MagicMock
 
 import pytest
 import requests
 
-from msgraphclient.auth import (
-    GraphClient,
-    GraphAuthorizationError,
+from ezspi.auth import (
+    Client,
+    AuthorizationError,
 )
 
 
@@ -48,7 +48,7 @@ def test_format_http_error_with_graph_payload() -> None:
         }
     )
 
-    message = GraphClient.format_http_error(error)
+    message = Client.format_http_error(error)
 
     assert "failed with 403 Forbidden" in message
     assert "accessDenied" in message
@@ -59,7 +59,7 @@ def test_format_http_error_with_text_payload() -> None:
     """Test plain-text error payloads are included when JSON is unavailable."""
     error = _http_error_with_response(text_payload="Forbidden")
 
-    message = GraphClient.format_http_error(error)
+    message = Client.format_http_error(error)
 
     assert "failed with 403 Forbidden" in message
     assert "Detail: Forbidden" in message
@@ -69,13 +69,13 @@ def test_format_http_error_without_response() -> None:
     """Test fallback message when HTTPError has no bound response."""
     error = requests.HTTPError("boom")
 
-    message = GraphClient.format_http_error(error)
+    message = Client.format_http_error(error)
 
     assert message == "HTTP error: boom"
 
 
 def test_raise_for_status_raises_graph_authorization_error_for_403() -> None:
-    """Test 403 responses are raised as GraphAuthorizationError."""
+    """Test 403 responses are raised as AuthorizationError."""
     error = _http_error_with_response(
         status=403,
         reason="Forbidden",
@@ -91,14 +91,14 @@ def test_raise_for_status_raises_graph_authorization_error_for_403() -> None:
     assert response is not None
     response.raise_for_status.side_effect = error
 
-    with pytest.raises(GraphAuthorizationError) as excinfo:
-        GraphClient._raise_for_status(response)
+    with pytest.raises(AuthorizationError) as excinfo:
+        Client._raise_for_status(response)
 
     assert "Authorization error:" in str(excinfo.value)
 
 
 def test_raise_for_status_raises_graph_authorization_error_for_401() -> None:
-    """Test 401 responses are raised as GraphAuthorizationError."""
+    """Test 401 responses are raised as AuthorizationError."""
     error = _http_error_with_response(
         status=401,
         reason="Unauthorized",
@@ -109,8 +109,8 @@ def test_raise_for_status_raises_graph_authorization_error_for_401() -> None:
     assert response is not None
     response.raise_for_status.side_effect = error
 
-    with pytest.raises(GraphAuthorizationError):
-        GraphClient._raise_for_status(response)
+    with pytest.raises(AuthorizationError):
+        Client._raise_for_status(response)
 
 
 def test_raise_for_status_raises_http_error_for_non_auth_failures() -> None:
@@ -126,4 +126,5 @@ def test_raise_for_status_raises_http_error_for_non_auth_failures() -> None:
     response.raise_for_status.side_effect = error
 
     with pytest.raises(requests.HTTPError):
-        GraphClient._raise_for_status(response)
+        Client._raise_for_status(response)
+

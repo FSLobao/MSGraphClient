@@ -10,12 +10,12 @@ from typing import Any
 
 from requests import HTTPError
 
-from msgraphclient.auth import GraphClient
-from msgraphclient.lists import GraphList
+from ezspi.auth import Client
+from ezspi.lists import SPList
 
 
 def _as_display_name_list(
-    list_client: GraphList,
+    list_client: SPList,
     columns: list[Any] | None,
 ) -> list[str]:
     """Normalize column payloads to schema-known display names only."""
@@ -75,8 +75,8 @@ def _prompt_view_selection(views: list[dict]) -> dict | None:
 
 
 def run_example_list_get(
-    client: GraphClient | None = None,
-    list_client: GraphList | None = None,
+    client: Client | None = None,
+    list_client: SPList | None = None,
     list_id: str | None = None,
     interactive: bool = True,
     selected_view_id: str | None = None,
@@ -84,11 +84,11 @@ def run_example_list_get(
     show_output: bool = True,
 ) -> dict[str, Any]:
     """Load list items into a DataFrame and return chainable context."""
-    resolved_client = client or GraphClient()
+    resolved_client = client or Client()
     resolved_list_client = list_client
     if resolved_list_client is None:
         resolved_list_id = list_id or os.environ["SHAREPOINT_LIST_ID"]
-        resolved_list_client = GraphList(
+        resolved_list_client = SPList(
             list_id=resolved_list_id, client=resolved_client
         )
 
@@ -116,7 +116,7 @@ def run_example_list_get(
             if show_output:
                 print(
                     "  Warning: could not resolve display names for configured "
-                    f"columns - {GraphClient.format_http_error(exc)}"
+                    f"columns - {Client.format_http_error(exc)}"
                 )
             filtered_columns = []
 
@@ -141,7 +141,7 @@ def run_example_list_get(
             if show_output:
                 print(
                     "  Warning: could not fetch views - "
-                    f"{GraphClient.format_http_error(exc)}"
+                    f"{Client.format_http_error(exc)}"
                 )
                 print("  Tip: set SHAREPOINT_VIEW_COLUMNS in .env to select columns")
                 print(
@@ -170,7 +170,7 @@ def run_example_list_get(
                 if show_output:
                     print(
                         "  Warning: could not fetch view columns - "
-                        f"{GraphClient.format_http_error(exc)}"
+                        f"{Client.format_http_error(exc)}"
                     )
                     print("  Using all available columns...\n")
                 columns = resolved_list_client.get_columns()
@@ -233,3 +233,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

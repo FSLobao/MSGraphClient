@@ -1,8 +1,8 @@
-"""Microsoft Graph HTTP client and authorization error.
+﻿"""Microsoft Graph HTTP client and authorization error.
 
 This module is the primary entry point for the library. It reads environment
 configuration (via ``.env``) and passes credentials to
-:class:`msgraphclient.auth.GraphAuthenticator` for token acquisition.
+:class:`ezspi.auth.Authenticator` for token acquisition.
 """
 
 from __future__ import annotations
@@ -16,24 +16,24 @@ from dotenv import load_dotenv
 load_dotenv()
 
 if TYPE_CHECKING:
-    from msgraphclient.auth import GraphAuthenticator
+    from ezspi.auth import Authenticator
 
 # Must run before settings import because settings may read env vars at import time.
 load_dotenv()
 
-from msgraphclient.messages import get_messages  # noqa: E402
-from msgraphclient.settings import GRAPH_DEFAULTS, GraphSettings  # noqa: E402
+from ezspi.messages import get_messages  # noqa: E402
+from ezspi.settings import DEFAULTS, Settings  # noqa: E402
 
-GRAPH_BASE_URL = GRAPH_DEFAULTS.graph_api_base_url
+GRAPH_BASE_URL = DEFAULTS.graph_api_base_url
 
-__all__ = ["GraphAuthorizationError", "GraphClient"]
+__all__ = ["AuthorizationError", "Client"]
 
 
-class GraphAuthorizationError(requests.HTTPError):
+class AuthorizationError(requests.HTTPError):
     """HTTP error raised when caller lacks authorization to a Graph resource."""
 
 
-class GraphClient:
+class Client:
     """Minimal Microsoft Graph API client.
 
     Public methods:
@@ -66,7 +66,7 @@ class GraphClient:
         reason = response.reason or ""
         base = f"{method} {url} failed with {status} {reason}".strip()
 
-        detail = GraphClient._extract_graph_error_detail(response)
+        detail = Client._extract_graph_error_detail(response)
         if detail:
             return f"{base}. Detail: {detail}"
         return base
@@ -103,10 +103,10 @@ class GraphClient:
             response.raise_for_status()
             return
         except requests.HTTPError as error:
-            message = GraphClient.format_http_error(error)
+            message = Client.format_http_error(error)
             status = response.status_code
             if status in (401, 403):
-                raise GraphAuthorizationError(
+                raise AuthorizationError(
                     f"Authorization error: {message}",
                     response=response,
                     request=response.request,
@@ -121,26 +121,26 @@ class GraphClient:
     def __init__(
         self,
         token: str | None = None,
-        authenticator: GraphAuthenticator | None = None,
+        authenticator: Authenticator | None = None,
         sharepoint_site_id: str | None = None,
         auth_mode: str | None = None,
         message_locale: str | None = None,
     ) -> None:
-        """Initialize Graph client and ensure an attached GraphAuthenticator.
+        """Initialize Graph client and ensure an attached Authenticator.
 
         Args:
             token: Optional explicit bearer token.
-            authenticator: Optional pre-built GraphAuthenticator to reuse.
+            authenticator: Optional pre-built Authenticator to reuse.
             sharepoint_site_id: Optional site id (overrides env).
             auth_mode: Optional auth mode override (client_credentials | delegated).
         """
-        # Lazy import breaks the circular dependency with msgraphclient.auth.
-        from msgraphclient.auth import GraphAuthenticator as _GraphAuthenticator
+        # Lazy import breaks the circular dependency with ezspi.auth.
+        from ezspi.auth import Authenticator as _Authenticator
 
         self.messages = get_messages(message_locale)
 
         if authenticator is None:
-            resolved_settings = GraphSettings.from_sources(
+            resolved_settings = Settings.from_sources(
                 tenant_id=os.environ.get("AZURE_TENANT_ID", ""),
                 client_id=os.environ.get("AZURE_CLIENT_ID", ""),
                 client_secret=os.environ.get("AZURE_CLIENT_SECRET", ""),
@@ -154,7 +154,7 @@ class GraphClient:
                 auth_popup_size=os.environ.get("GRAPH_AUTH_POPUP_SIZE"),
             )
 
-            self.authenticator = _GraphAuthenticator(
+            self.authenticator = _Authenticator(
                 tenant_id=resolved_settings.tenant_id,
                 client_id=resolved_settings.client_id,
                 client_secret=resolved_settings.client_secret,
@@ -313,3 +313,4 @@ class GraphClient:
             "drives": self.site_drives,
             "lists": self.site_lists,
         }
+

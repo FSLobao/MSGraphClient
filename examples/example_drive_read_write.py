@@ -11,8 +11,8 @@ import os
 from typing import Any
 
 
-from msgraphclient.auth import GraphClient
-from msgraphclient.drive import GraphDrive
+from ezspi.auth import Client
+from ezspi.drive import SPLibrary
 
 # ── Configuration ───────────────────────────────────────────────────────────
 # Set DRIVE_ITEM_ID in .env with a real drive item ID for a text file
@@ -21,19 +21,19 @@ ITEM_ID: str = os.getenv("DRIVE_ITEM_ID", "").strip()
 
 
 def run_example_drive_read_write(
-    client: GraphClient | None = None,
-    drive: GraphDrive | None = None,
+    client: Client | None = None,
+    drive: SPLibrary | None = None,
     drive_id: str | None = None,
     item_id: str | None = None,
     append_suffix: str = "\n[Appended by python example]\n",
     show_output: bool = True,
 ) -> dict[str, Any]:
     """Read, update, and re-read a text file, returning chainable context."""
-    resolved_client = client or GraphClient()
+    resolved_client = client or Client()
     resolved_drive = drive
     if resolved_drive is None:
         resolved_drive_id = drive_id or os.environ["SHAREPOINT_DRIVE_ID"]
-        resolved_drive = GraphDrive(drive_id=resolved_drive_id, client=resolved_client)
+        resolved_drive = SPLibrary(drive_id=resolved_drive_id, client=resolved_client)
 
     target_item_id = (item_id or ITEM_ID).strip()
     if not target_item_id:
@@ -90,3 +90,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

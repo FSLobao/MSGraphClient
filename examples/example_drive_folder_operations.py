@@ -1,4 +1,4 @@
-"""
+﻿"""
 example_drive_folder_operations.py - Validate drive operations inside a selected folder.
 
 This example reuses existing drive examples by adding folder-focused behavior:
@@ -18,8 +18,8 @@ import os
 from pathlib import Path
 from typing import Any, Literal
 
-from msgraphclient.auth import GraphClient
-from msgraphclient.drive import GraphDrive
+from ezspi.auth import Client
+from ezspi.drive import SPLibrary
 
 from examples.example_drive_download import run_example_drive_download
 from examples.example_drive_read_write import run_example_drive_read_write
@@ -83,8 +83,8 @@ def _select_text_file(items: list[dict[str, Any]]) -> dict[str, Any] | None:
 
 
 def run_example_drive_folder_operations(
-    client: GraphClient | None = None,
-    drive: GraphDrive | None = None,
+    client: Client | None = None,
+    drive: SPLibrary | None = None,
     drive_id: str | None = None,
     base_path: str = DEFAULT_BASE_PATH,
     folder_name: str | None = None,
@@ -97,11 +97,11 @@ def run_example_drive_folder_operations(
     show_output: bool = True,
 ) -> dict[str, Any]:
     """List folders, switch to one folder, then execute a selected operation."""
-    resolved_client = client or GraphClient()
+    resolved_client = client or Client()
     resolved_drive = drive
     if resolved_drive is None:
         resolved_drive_id = drive_id or os.environ["SHAREPOINT_DRIVE_ID"]
-        resolved_drive = GraphDrive(drive_id=resolved_drive_id, client=resolved_client)
+        resolved_drive = SPLibrary(drive_id=resolved_drive_id, client=resolved_client)
 
     if operation not in {"read_write", "upload_download"}:
         raise ValueError("operation must be 'read_write' or 'upload_download'")
@@ -242,3 +242,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

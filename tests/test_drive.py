@@ -1,11 +1,11 @@
-"""Tests for drive.py"""
+﻿"""Tests for drive.py"""
 
 from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
 
-import msgraphclient.drive as drive_mod
+import ezspi.drive as drive_mod
 
 
 @pytest.fixture()
@@ -22,7 +22,7 @@ def _mock_client(
     raw_bytes: bytes = b"",
     raw_encoding: str | None = None,
 ) -> MagicMock:
-    """Create a mock GraphClient instance for testing."""
+    """Create a mock Client instance for testing."""
     client = MagicMock()
     client.get.side_effect = [
         {"id": "drive-abc", "name": "Documents", "webUrl": "https://contoso"},
@@ -39,7 +39,7 @@ def test_ls_returns_value(env: None) -> None:
     """Test that ls returns the value array from API response."""
     items = [{"name": "file1.txt"}, {"name": "file2.txt"}]
     mock_client = _mock_client(return_value={"value": items})
-    drive = drive_mod.GraphDrive(drive_id="drive-abc", client=mock_client)
+    drive = drive_mod.SPLibrary(drive_id="drive-abc", client=mock_client)
 
     result = drive.ls()
 
@@ -58,7 +58,7 @@ def test_ls_with_explicit_path_keeps_working_folder(env: None) -> None:
         {"value": items},
     ]
 
-    drive = drive_mod.GraphDrive(drive_id="drive-abc", client=mock_client)
+    drive = drive_mod.SPLibrary(drive_id="drive-abc", client=mock_client)
 
     result = drive.ls("/Documents/Reports")
 
@@ -69,7 +69,7 @@ def test_ls_with_explicit_path_keeps_working_folder(env: None) -> None:
 
 
 def test_graph_drive_initialization_loads_basic_metadata(env: None) -> None:
-    """Test that GraphDrive validates access and stores basic drive attributes."""
+    """Test that SPLibrary validates access and stores basic drive attributes."""
     mock_client = MagicMock()
     mock_client.get.side_effect = [
         {
@@ -81,7 +81,7 @@ def test_graph_drive_initialization_loads_basic_metadata(env: None) -> None:
         {"id": "root", "name": "root", "folder": {"childCount": 2}},
     ]
 
-    drive = drive_mod.GraphDrive(drive_id="drive-abc", client=mock_client)
+    drive = drive_mod.SPLibrary(drive_id="drive-abc", client=mock_client)
 
     assert drive.drive_graph_id == "drive-abc"
     assert drive.drive_name == "Documents"
@@ -92,7 +92,7 @@ def test_graph_drive_initialization_loads_basic_metadata(env: None) -> None:
 def test_graph_drive_initialization_with_explicit_arguments(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Test GraphDrive accepts explicit drive id and injected client."""
+    """Test SPLibrary accepts explicit drive id and injected client."""
     monkeypatch.delenv("SHAREPOINT_DRIVE_ID", raising=False)
 
     mock_client = MagicMock()
@@ -106,7 +106,7 @@ def test_graph_drive_initialization_with_explicit_arguments(
         {"id": "root", "name": "root", "folder": {"childCount": 3}},
     ]
 
-    drive = drive_mod.GraphDrive(drive_id="drive-custom", client=mock_client)
+    drive = drive_mod.SPLibrary(drive_id="drive-custom", client=mock_client)
 
     assert drive.drive_id == "drive-custom"
     assert drive.drive_graph_id == "drive-custom"
@@ -117,9 +117,9 @@ def test_graph_drive_initialization_with_explicit_arguments(
 
 
 def test_list_drive_items_missing_drive_id() -> None:
-    """Test that GraphDrive requires drive_id as a parameter."""
+    """Test that SPLibrary requires drive_id as a parameter."""
     with pytest.raises(TypeError):
-        drive_mod.GraphDrive(client=MagicMock())  # type: ignore[call-arg]
+        drive_mod.SPLibrary(client=MagicMock())  # type: ignore[call-arg]
 
 
 def test_pwd_defaults_to_root(env: None) -> None:
@@ -130,7 +130,7 @@ def test_pwd_defaults_to_root(env: None) -> None:
         {"id": "root", "name": "root", "folder": {"childCount": 1}},
     ]
 
-    drive = drive_mod.GraphDrive(drive_id="drive-abc", client=mock_client)
+    drive = drive_mod.SPLibrary(drive_id="drive-abc", client=mock_client)
 
     assert drive.pwd() == "/"
 
@@ -144,7 +144,7 @@ def test_cd_validates_and_changes_folder(env: None) -> None:
         {"id": "folder-1", "name": "Reports", "folder": {"childCount": 4}},
     ]
 
-    drive = drive_mod.GraphDrive(drive_id="drive-abc", client=mock_client)
+    drive = drive_mod.SPLibrary(drive_id="drive-abc", client=mock_client)
     new_path = drive.cd("Documents/Reports")
 
     assert new_path == "/Documents/Reports"
@@ -160,7 +160,7 @@ def test_cd_rejects_non_folder_path(env: None) -> None:
         {"id": "file-1", "name": "notes.txt", "file": {"mimeType": "text/plain"}},
     ]
 
-    drive = drive_mod.GraphDrive(drive_id="drive-abc", client=mock_client)
+    drive = drive_mod.SPLibrary(drive_id="drive-abc", client=mock_client)
 
     with pytest.raises(ValueError, match="Path is not a folder"):
         drive.cd("notes.txt")
@@ -169,7 +169,7 @@ def test_cd_rejects_non_folder_path(env: None) -> None:
 def test_download(env: None, tmp_path: Path) -> None:
     """Test that download correctly fetches and writes a file to local disk."""
     mock_client = _mock_client(raw_bytes=b"file content")
-    drive = drive_mod.GraphDrive(drive_id="drive-abc", client=mock_client)
+    drive = drive_mod.SPLibrary(drive_id="drive-abc", client=mock_client)
 
     dest = tmp_path / "downloaded.txt"
     result = drive.download("item-123", dest)
@@ -183,7 +183,7 @@ def test_upload(env: None, tmp_path: Path) -> None:
     src = tmp_path / "upload_me.txt"
     src.write_bytes(b"hello world")
     mock_client = _mock_client()
-    drive = drive_mod.GraphDrive(drive_id="drive-abc", client=mock_client)
+    drive = drive_mod.SPLibrary(drive_id="drive-abc", client=mock_client)
 
     result = drive.upload(src)
 
@@ -198,7 +198,7 @@ def test_upload_accepts_trailing_colon_remote_folder(env: None, tmp_path: Path) 
     src = tmp_path / "upload_me.txt"
     src.write_bytes(b"hello world")
     mock_client = _mock_client()
-    drive = drive_mod.GraphDrive(drive_id="drive-abc", client=mock_client)
+    drive = drive_mod.SPLibrary(drive_id="drive-abc", client=mock_client)
 
     drive.upload(src, remote_folder="root:/Pasta:")
 
@@ -209,7 +209,7 @@ def test_upload_accepts_trailing_colon_remote_folder(env: None, tmp_path: Path) 
 def test_read(env: None) -> None:
     """Test that read decodes binary response as UTF-8 text when no charset is declared."""
     mock_client = _mock_client(raw_bytes="Hello, Graph!".encode("utf-8"))
-    drive = drive_mod.GraphDrive(drive_id="drive-abc", client=mock_client)
+    drive = drive_mod.SPLibrary(drive_id="drive-abc", client=mock_client)
 
     content = drive.read("item-456")
 
@@ -223,7 +223,7 @@ def test_read_uses_server_declared_encoding(env: None) -> None:
         raw_bytes="caf\xe9".encode("latin-1"),
         raw_encoding="latin-1",
     )
-    drive = drive_mod.GraphDrive(drive_id="drive-abc", client=mock_client)
+    drive = drive_mod.SPLibrary(drive_id="drive-abc", client=mock_client)
 
     content = drive.read("item-456")
 
@@ -237,7 +237,7 @@ def test_read_explicit_encoding_overrides_declared(env: None) -> None:
         raw_bytes="caf\xe9".encode("latin-1"),
         raw_encoding="utf-8",  # server says utf-8 but bytes are latin-1
     )
-    drive = drive_mod.GraphDrive(drive_id="drive-abc", client=mock_client)
+    drive = drive_mod.SPLibrary(drive_id="drive-abc", client=mock_client)
 
     content = drive.read("item-456", encoding="latin-1")
 
@@ -249,7 +249,7 @@ def test_write(env: None) -> None:
     """Test that write encodes text and sends to Graph API."""
     mock_client = _mock_client()
     mock_client.put_bytes.return_value = {"id": "item-456"}
-    drive = drive_mod.GraphDrive(drive_id="drive-abc", client=mock_client)
+    drive = drive_mod.SPLibrary(drive_id="drive-abc", client=mock_client)
 
     result = drive.write("item-456", "updated content")
 
@@ -262,7 +262,7 @@ def test_write_uses_last_encoding_from_read(env: None) -> None:
     raw = "caf\xe9".encode("latin-1")
     mock_client = _mock_client(raw_bytes=raw, raw_encoding="latin-1")
     mock_client.put_bytes.return_value = {"id": "item-456"}
-    drive = drive_mod.GraphDrive(drive_id="drive-abc", client=mock_client)
+    drive = drive_mod.SPLibrary(drive_id="drive-abc", client=mock_client)
 
     drive.read("item-456")
     drive.write("item-456", "caf\xe9")
@@ -278,9 +278,10 @@ def test_write_defaults_to_utf8_without_prior_read(env: None) -> None:
     """Test that write uses utf-8 when no prior read has set last_encoding."""
     mock_client = _mock_client()
     mock_client.put_bytes.return_value = {"id": "item-789"}
-    drive = drive_mod.GraphDrive(drive_id="drive-abc", client=mock_client)
+    drive = drive_mod.SPLibrary(drive_id="drive-abc", client=mock_client)
 
     drive.write("item-789", "hello")
 
     _, call_kwargs = mock_client.put_bytes.call_args
     assert call_kwargs["content_type"] == "text/plain; charset=utf-8"
+
