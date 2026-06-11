@@ -5,7 +5,7 @@ Supports two authentication modes:
 - delegated (user-interactive)
 
 Credentials are received as explicit parameters (environment reading is
-handled by :class:`ezspi.client.Client`).
+handled by :class:`ezsp.client.Client`).
 """
 
 import os
@@ -13,16 +13,16 @@ from collections.abc import Sequence
 
 import msal
 
-from ezspi.client import AuthorizationError, Client  # noqa: F401
-from ezspi.messages import get_messages
-from ezspi.settings import (
+from ezsp.client import AuthorizationError, Client  # noqa: F401
+from ezsp.messages import get_messages
+from ezsp.settings import (
     DEFAULTS,
     Settings,
     parse_popup_size,
 )
 
 # Public API exported by this module.
-# AuthorizationError and Client are re-exported from ezspi.client.
+# AuthorizationError and Client are re-exported from ezsp.client.
 __all__ = ["AuthorizationError", "Client", "Authenticator"]
 
 
@@ -56,7 +56,7 @@ def _find_chromium_app_browser(
     the browser with the ``--app`` flag so the auth page opens in a minimal
     app window instead of a regular tab in an existing browser instance.
 
-    An isolated profile stored under ``%LOCALAPPDATA%\\ezspi\\popup-profile``
+    An isolated profile stored under ``%LOCALAPPDATA%\\ezsp\\popup-profile``
     is used so Chromium always applies ``--window-size`` without restoring any
     previously saved window geometry.  The ``--no-signin`` and
     ``--disable-sync`` flags suppress the browser's own account sign-in prompt
@@ -76,7 +76,7 @@ def _find_chromium_app_browser(
 
     popup_profile = os.path.join(
         os.environ.get("LOCALAPPDATA") or os.path.expanduser("~"),
-        "ezspi",
+        "ezsp",
         "popup-profile",
     )
     os.makedirs(popup_profile, exist_ok=True)
@@ -185,8 +185,8 @@ class Authenticator:
         Produces a single error message listing all missing items.
         """
         env_path = self._env_file_location()
-        docs_url = "https://github.com/FSLobao/ezspi/wiki/Configuration"
-        repo_url = "https://github.com/FSLobao/ezspi"
+        docs_url = "https://github.com/FSLobao/ezsp/wiki/Configuration"
+        repo_url = "https://github.com/FSLobao/ezsp"
 
         # Check each required variable (argument OR environment)
         required = [

@@ -10,8 +10,8 @@ from typing import Any
 
 from requests import HTTPError
 
-from ezspi.auth import Client
-from ezspi.lists import SPList
+from ezsp.auth import Client
+from ezsp.lists import SPList
 
 
 def _as_display_name_list(

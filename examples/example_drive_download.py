@@ -13,8 +13,8 @@ from typing import Any
 import os
 
 
-from ezspi.auth import Client
-from ezspi.drive import SPLibrary
+from ezsp.auth import Client
+from ezsp.drive import SPLibrary
 
 # ── Configuration ───────────────────────────────────────────────────────────
 # Replace with a real drive item ID, or leave empty to use the first file found

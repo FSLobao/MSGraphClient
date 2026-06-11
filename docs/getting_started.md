@@ -119,7 +119,7 @@ No fluxo delegado, o acesso efetivo em runtime é a interseção entre: 1) a con
 
 Mudar para autenticação delegada requer:
 
-1. Mudança da aquisição de token em `src/ezspi/auth.py` do endpoint de
+1. Mudança da aquisição de token em `src/ezsp/auth.py` do endpoint de
    credenciais do cliente para o fluxo de código de autorização (usando uma biblioteca como
    [MSAL for Python](https://github.com/AzureAD/microsoft-authentication-library-for-python)
    com `acquire_token_interactive()`).

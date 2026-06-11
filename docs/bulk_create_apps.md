@@ -268,7 +268,7 @@ notepad apps.json
 
 ```powershell
 # Navegar ao diretório do projeto
-cd C:\GitHub\ezspi
+cd C:\GitHub\ezsp
 
 # Executar script
 .\src\bulkCreate\Bulk-CreateApps.ps1 -InputPath "apps.json"
@@ -407,7 +407,7 @@ az login
 
 ```bash
 # Navegar ao diretório do projeto
-cd C:\GitHub\ezspi
+cd C:\GitHub\ezsp
 
 # Instalar ambiente e dependências
 uv sync

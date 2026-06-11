@@ -29,8 +29,8 @@ import pandas as pd
 import requests
 from dateutil import parser as dateutil_parser
 
-from ezspi.auth import Client
-from ezspi.client import GRAPH_BASE_URL
+from ezsp.auth import Client
+from ezsp.client import GRAPH_BASE_URL
 
 
 _UNIMPLEMENTED_COLUMN_TYPES: dict[str, str] = {

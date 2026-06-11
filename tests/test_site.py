@@ -4,8 +4,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-import ezspi.auth as auth_mod
-from ezspi.client import Client
+import ezsp.auth as auth_mod
+from ezsp.client import Client
 
 
 def test_get_site_contents_combines_site_drives_lists(

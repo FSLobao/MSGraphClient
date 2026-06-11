@@ -4,9 +4,9 @@ import pytest
 import msal
 from unittest.mock import MagicMock, patch
 
-import ezspi.auth as auth_mod
-from ezspi.messages import EN_MESSAGES, get_messages
-from ezspi.settings import DEFAULTS, Settings
+import ezsp.auth as auth_mod
+from ezsp.messages import EN_MESSAGES, get_messages
+from ezsp.settings import DEFAULTS, Settings
 
 
 @pytest.fixture(autouse=True)

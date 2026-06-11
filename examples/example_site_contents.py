@@ -12,9 +12,9 @@ Authentication mode is controlled by .env (GRAPH_AUTH_MODE). This script works f
 import os
 from typing import Any
 
-from ezspi.auth import AuthorizationError, Client
-from ezspi.drive import SPLibrary
-from ezspi.lists import SPList
+from ezsp.auth import AuthorizationError, Client
+from ezsp.drive import SPLibrary
+from ezsp.lists import SPList
 
 
 def _safe(value: object) -> str:

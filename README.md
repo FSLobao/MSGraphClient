@@ -1,9 +1,9 @@
 <a id="topo"></a>
 
-# ezspi
+# ezsp
 ## Uma camada de abstração MSAL para uso do SharePoint
 
-ezspi é uma biblioteca Python para abstrair fluxos de autenticação com **MSAL** e simplificar
+ezsp é uma biblioteca Python para abstrair fluxos de autenticação com **MSAL** e simplificar
 a integração de aplicações desktop e mobile com o SharePoint Online via **Microsoft Graph API**. O foco é fornecer uma experiência de desenvolvimento fluida, com configuração centralizada, mensagens localizadas e operações de alto nível.
 
 As operações cobertas incluem gerenciamento de biblioteca de documentos (drive)
@@ -49,7 +49,7 @@ Este repositório apresenta a seguinte organização:
 				<li><code>Bulk-CreateApps.ps1</code>: alternativa PowerShell para execucao operacional em ambientes Windows</li>
 			</ul>
 		</li>
-		<li><strong>ezspi/</strong>: implementacao do cliente Graph e operacoes de SharePoint
+		<li><strong>ezsp/</strong>: implementacao do cliente Graph e operacoes de SharePoint
 			<ul>
 				<li><code>__init__.py</code>: ponto de entrada do pacote para importacoes publicas</li>
 				<li><code>auth.py</code>: autenticacao MSAL (app_only/delegated) — valida credenciais e adquire tokens</li>
@@ -144,7 +144,7 @@ Opção A (com UV):
 
 ```bash
 git clone <repo-url>
-cd ezspi
+cd ezsp
 uv sync
 ```
 
@@ -152,7 +152,7 @@ Opção B (sem UV, com venv + pip):
 
 ```bash
 git clone <repo-url>
-cd ezspi
+cd ezsp
 python -m venv .venv
 ```
 
@@ -201,9 +201,9 @@ Variáveis opcionais (possuem valor default):
 | `SHAREPOINT_DRIVE_ID` | — | ID da biblioteca de documentos (necessário para `SPLibrary`) |
 | `SHAREPOINT_LIST_ID` | — | ID da lista SharePoint (necessário para `SPList`) |
 
-Defaults e resolucao dessas variaveis ficam centralizados em `src/ezspi/settings.py`.
-Mensagens para usuario sao resolvidas em `src/ezspi/messages.py`, com bundles em
-`src/ezspi/locales/en.json` e `src/ezspi/locales/pt.json`.
+Defaults e resolucao dessas variaveis ficam centralizados em `src/ezsp/settings.py`.
+Mensagens para usuario sao resolvidas em `src/ezsp/messages.py`, com bundles em
+`src/ezsp/locales/en.json` e `src/ezsp/locales/pt.json`.
 
 Consulte [`.env.example`](.env.example) para um modelo completo com explicações detalhadas.
 
@@ -369,8 +369,8 @@ configuracao, evitando valores hardcoded espalhados entre modulos.
 
 ### `messages.py` e `locales/*.json`
 `messages.py` resolve strings voltadas ao usuario via `GRAPH_LOCALE`.
-Os bundles ficam em `src/ezspi/locales/en.json` e
-`src/ezspi/locales/pt.json`, com fallback para ingles quando
+Os bundles ficam em `src/ezsp/locales/en.json` e
+`src/ezsp/locales/pt.json`, com fallback para ingles quando
 locale/chave nao existe.
 
 ### `drive.py`

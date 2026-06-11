@@ -8,7 +8,7 @@ import pandas as pd
 import pytest
 import requests
 
-import ezspi.lists as lists_mod
+import ezsp.lists as lists_mod
 
 
 def _sample_columns() -> list[dict]:

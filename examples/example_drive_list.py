@@ -3,8 +3,8 @@
 import os
 from typing import Any
 
-from ezspi.auth import Client
-from ezspi.drive import SPLibrary
+from ezsp.auth import Client
+from ezsp.drive import SPLibrary
 
 
 def run_example_drive_list(

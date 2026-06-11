@@ -1,4 +1,4 @@
-﻿"""Localized user-facing messages for ezspi."""
+﻿"""Localized user-facing messages for ezsp."""
 
 from __future__ import annotations
 

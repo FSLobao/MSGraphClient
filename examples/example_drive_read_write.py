@@ -11,8 +11,8 @@ import os
 from typing import Any
 
 
-from ezspi.auth import Client
-from ezspi.drive import SPLibrary
+from ezsp.auth import Client
+from ezsp.drive import SPLibrary
 
 # ── Configuration ───────────────────────────────────────────────────────────
 # Set DRIVE_ITEM_ID in .env with a real drive item ID for a text file

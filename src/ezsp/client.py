@@ -2,7 +2,7 @@
 
 This module is the primary entry point for the library. It reads environment
 configuration (via ``.env``) and passes credentials to
-:class:`ezspi.auth.Authenticator` for token acquisition.
+:class:`ezsp.auth.Authenticator` for token acquisition.
 """
 
 from __future__ import annotations
@@ -16,13 +16,13 @@ from dotenv import load_dotenv
 load_dotenv()
 
 if TYPE_CHECKING:
-    from ezspi.auth import Authenticator
+    from ezsp.auth import Authenticator
 
 # Must run before settings import because settings may read env vars at import time.
 load_dotenv()
 
-from ezspi.messages import get_messages  # noqa: E402
-from ezspi.settings import DEFAULTS, Settings  # noqa: E402
+from ezsp.messages import get_messages  # noqa: E402
+from ezsp.settings import DEFAULTS, Settings  # noqa: E402
 
 GRAPH_BASE_URL = DEFAULTS.graph_api_base_url
 
@@ -134,8 +134,8 @@ class Client:
             sharepoint_site_id: Optional site id (overrides env).
             auth_mode: Optional auth mode override (client_credentials | delegated).
         """
-        # Lazy import breaks the circular dependency with ezspi.auth.
-        from ezspi.auth import Authenticator as _Authenticator
+        # Lazy import breaks the circular dependency with ezsp.auth.
+        from ezsp.auth import Authenticator as _Authenticator
 
         self.messages = get_messages(message_locale)
 

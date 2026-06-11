@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ezspi.auth import Client
+from ezsp.auth import Client
 
 
 class SPLibrary:

@@ -18,8 +18,8 @@ import os
 from pathlib import Path
 from typing import Any, Literal
 
-from ezspi.auth import Client
-from ezspi.drive import SPLibrary
+from ezsp.auth import Client
+from ezsp.drive import SPLibrary
 
 from examples.example_drive_download import run_example_drive_download
 from examples.example_drive_read_write import run_example_drive_read_write

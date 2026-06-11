@@ -1,5 +1,5 @@
 ﻿"""
-ezspi - Microsoft Graph / SharePoint client abstractions powered by MSAL.
+ezsp - Microsoft Graph / SharePoint client abstractions powered by MSAL.
 
 Subpackages:
   auth        - MSAL authentication helpers (Authenticator)

@@ -16,8 +16,8 @@ from typing import Any
 
 import requests
 
-from ezspi.auth import Client
-from ezspi.lists import SPList
+from ezsp.auth import Client
+from ezsp.lists import SPList
 
 from examples.list_value_generation import bounded_number_update
 

@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 import pytest
 import requests
 
-from ezspi.auth import (
+from ezsp.auth import (
     Client,
     AuthorizationError,
 )

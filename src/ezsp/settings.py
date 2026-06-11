@@ -1,4 +1,4 @@
-﻿"""Shared configuration defaults and resolution helpers for ezspi."""
+﻿"""Shared configuration defaults and resolution helpers for ezsp."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 import os
 
-from ezspi.messages import get_messages
+from ezsp.messages import get_messages
 
 
 @dataclass(frozen=True, slots=True)

@@ -13,8 +13,8 @@ import os
 import random
 from typing import Any
 
-from ezspi.auth import Client
-from ezspi.lists import SPList
+from ezsp.auth import Client
+from ezsp.lists import SPList
 
 from examples.list_value_generation import random_number_from_validation
 

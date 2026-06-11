@@ -6,8 +6,8 @@ from typing import Any
 
 from requests import HTTPError
 
-from ezspi.auth import Client
-from ezspi.drive import SPLibrary
+from ezsp.auth import Client
+from ezsp.drive import SPLibrary
 
 
 # ── Configuration ───────────────────────────────────────────────────────────

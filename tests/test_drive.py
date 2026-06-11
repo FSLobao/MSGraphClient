@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-import ezspi.drive as drive_mod
+import ezsp.drive as drive_mod
 
 
 @pytest.fixture()

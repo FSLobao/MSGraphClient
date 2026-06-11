@@ -1,4 +1,4 @@
-# Copilot Context — ezspi
+# Copilot Context — ezsp
 
 Este arquivo resume o estado atual do repositório para manutenção de código e documentação.
 Atualize-o sempre que a superfície pública, dependências ou estrutura do projeto mudarem.
@@ -41,7 +41,7 @@ No fluxo `delegated`, o acesso efetivo em runtime continua sendo a interseção 
 ## Estrutura Atual
 
 ```text
-ezspi/
+ezsp/
 ├── docs/
 │   ├── bulk_create_apps.md
 │   ├── getting_started.md
@@ -65,7 +65,7 @@ ezspi/
 │   └── downloads/
 ├── src/
 │   ├── bulkCreate/
-│   └── ezspi/
+│   └── ezsp/
 │       ├── __init__.py
 │       ├── auth.py
 │       ├── client.py
@@ -90,7 +90,7 @@ ezspi/
 
 ## Superfície de API (Atual)
 
-### `src/ezspi/client.py`
+### `src/ezsp/client.py`
 - `AuthorizationError` (especializa falhas 401/403).
 - `Client.format_http_error(error)`
 - `Client.get(path, **kwargs)`
@@ -102,12 +102,12 @@ ezspi/
 
 Também popula atributos de site (`site_graph_id`, `site_name`, `site_display_name`, `site_web_url`, `site_drives`, `site_lists`) quando `SHAREPOINT_SITE_ID` está disponível.
 
-### `src/ezspi/auth.py`
+### `src/ezsp/auth.py`
 - `Authenticator` com resolução por `Settings` e suporte a `client_credentials` e `delegated`.
 - Reexporta `Client` e `AuthorizationError`.
 - Usa cache de token em memória para fluxo delegado.
 
-### `src/ezspi/drive.py`
+### `src/ezsp/drive.py`
 - `SPLibrary.pwd()`
 - `SPLibrary.cd(path)`
 - `SPLibrary.ls(path=None)`
@@ -118,7 +118,7 @@ Também popula atributos de site (`site_graph_id`, `site_name`, `site_display_na
 
 `read()` detecta charset da resposta HTTP quando possível e persiste em `last_encoding`, usado por `write()` quando `encoding` não é informado.
 
-### `src/ezspi/lists.py`
+### `src/ezsp/lists.py`
 - `SPList.get_views()` (com fallback seguro)
 - `SPList.get_view_columns(view_id)`
 - `SPList.get_columns(names=None)`
@@ -173,5 +173,5 @@ Diretrizes:
 ## Última Atualização
 
 - Data: 09/06/2026
-- Alteração principal: contexto sincronizado com estrutura atual (`src/ezspi`, exemplos e testes), superfície pública revisada e seção de validação ajustada para refletir o estado real da sessão.
+- Alteração principal: contexto sincronizado com estrutura atual (`src/ezsp`, exemplos e testes), superfície pública revisada e seção de validação ajustada para refletir o estado real da sessão.
 

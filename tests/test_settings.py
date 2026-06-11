@@ -1,6 +1,6 @@
-﻿"""Tests for ezspi.settings."""
+﻿"""Tests for ezsp.settings."""
 
-from ezspi.settings import DEFAULTS, Settings, parse_popup_size
+from ezsp.settings import DEFAULTS, Settings, parse_popup_size
 
 
 def test_parse_popup_size_uses_default_on_invalid_input() -> None:
